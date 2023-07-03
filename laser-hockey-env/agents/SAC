@@ -1,0 +1,79 @@
+import numpy as np
+import torch.nn as nn
+import torch
+import gymnasium as gym
+from abc import ABC, abstractmethod
+
+class SAC(nn.Module, ABC):
+    """
+    Implementation of the SAC algorithm
+    """
+    def __init__(self, env: gym.Env, n_neurons: int = 256, *args, **kwargs):
+        """
+        Initialize the SAC algorithm with the gym environment
+
+        :param env: gym environment (e.g. LaserHockey-v0)
+        :param n_neurons: number of neurons in the fully connected layers (default: 256)
+        """
+        super(SAC, self).__init__(*args, **kwargs)
+        self.env = env
+
+        # define the net consisting of two fully connected layers with 256 neurons each
+        # number of input neurons is the number of pixels in the observation space
+        n_input_neurons = env.observation_space.shape[0] * env.observation_space.shape[1]      
+        n_output_neurons = env.action_space.shape[0]  
+        self.fully_connected_layer_1 = nn.Linear(n_input_neurons, 256)
+        self.fully_connected_layer_2 = nn.Linear(256, 256)
+        self.fully_connected_mean = nn.Linear(256, n_output_neurons)
+        self.fully_connected_log_std = nn.Linear(256, n_output_neurons)
+
+        # action rescaling
+        low, high = env.action_space.low, env.action_space.high
+        self.action_scale = torch.tensor((high - low) / 2.)
+        self.action_bias = torch.tensor((high + low) / 2.)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Define the forward pass of the net --> pass the input tensor through the net
+
+        :param x: input tensor (observation state)
+        :return: output tensor (used later to calculate the action)
+        """
+        x = torch.relu(self.fully_connected_layer_1(x))
+        x = torch.relu(self.fully_connected_layer_2(x))
+        mean = self.fully_connected_mean(x)
+        log_std = self.fully_connected_log_std(x)
+        #log_std = torch.tanh(log_std)
+
+        return mean, log_std
+    
+    def get_action(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Get the action from the net output
+
+        :param x: input tensor
+        :return: action tensor
+        """
+        # pass the input tensor through the net to calculate the mean and log_std
+        mean, log_std = self.forward(x)
+        # convert the log standard deviation to standard deviation by applying the exponential function
+        std = log_std.exp()
+
+        # sample the action from the normal distribution
+        normal = torch.distributions.Normal(loc=mean, scale=std)
+        z = normal.rsample()
+
+        action = torch.tanh(z)
+        # rescale the action to a value within the action space
+        action = action * self.action_scale + self.action_bias
+        action = action.clamp(self.env.action_space.low[0], self.env.action_space.high[0])
+
+        # enforcing action bounds
+        epsilon = 1e-6
+        log_prob = normal.log_prob(z) - torch.log(self.action_scale * (1 - action.pow(2)) + epsilon)
+        log_prob = log_prob.sum(1, keepdim=True)
+
+        rescaled_mean = torch.tanh(mean) * self.action_scale + self.action_bias
+
+        return action, log_prob, rescaled_mean
+        
