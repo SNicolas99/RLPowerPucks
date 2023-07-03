@@ -1,0 +1,7 @@
+
+Box2D-kengz==2.3.3
+gymnasium==0.28.1
+ipykernel==6.23.3
+jupyter==1.0.0
+numpy==1.25.0
+pygame==2.5.0
