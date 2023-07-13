@@ -3,10 +3,10 @@ import numpy as np
 
 
 class TD3(BaseAlgorithm):
-    """DDPG algorithm implementation."""
+    """TD3 algorithm implementation."""
     def __init__(self, **kwargs):
         """
-        Implementation of the Deep Deterministic Policy Gradient algorithm.
+        Implementation of the Twin Delayed Deep Deterministic Policy Gradient algorithm.
         :param kwargs: Additional arguments.
         """
         super().__init__(**kwargs)
