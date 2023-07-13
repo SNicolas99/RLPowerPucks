@@ -2,7 +2,7 @@ from algorithms import BaseAlgorithm
 import numpy as np
 
 
-class DDPG(BaseAlgorithm):
+class TD3(BaseAlgorithm):
     """DDPG algorithm implementation."""
     def __init__(self, **kwargs):
         """
