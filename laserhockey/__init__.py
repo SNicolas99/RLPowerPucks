@@ -1,0 +1,2 @@
+from laserhockey.laserhockey.laser_hockey_env import LaserHockeyEnv
+from laserhockey.laserhockey.hockey_env import HockeyEnv
