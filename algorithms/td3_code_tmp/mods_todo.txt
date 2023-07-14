@@ -1,0 +1,12 @@
+
+Rainbow:
+    
+    Prioritized replay ✓
+    multi-step learning (targets)
+    Noisy nets
+
+Own ideas:
+    Disentangle exploration from learning completely by using a novelty search algorithm in the beginning
+
+Div:
+    Implement saving the model
