@@ -60,6 +60,7 @@ class TD3:
         play_interval=1000,
         prioritized_replay=True,
         noise_mode="ornstein-uhlenbeck",
+        hockey_opponent=None,
     ):
         self.device = "cpu"
         self.debug = False
@@ -86,6 +87,7 @@ class TD3:
         self.beta = 1.0 - zeta / 2.0
         self.test_interval = test_interval
         self.play_interval = play_interval
+        self.hockey_opponent = hockey_opponent
 
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size, prioritized_replay=prioritized_replay)
 
@@ -145,6 +147,7 @@ class TD3:
             raise ValueError("Unknown noise mode")
 
         self.train_iter = 0
+        self.total_steps = 0
 
     def reset(self):
         if self.noise_mode == "ornstein-uhlenbeck":
@@ -367,6 +370,12 @@ class TD3:
         return action
 
     def train(self):
+
+        hockey_opponent = self.hockey_opponent
+
+        if (self.env_string == "HockeyEnv" or self.env_string == "LaserHockeyEnv") and hockey_opponent is None:
+            raise ValueError("Hockey opponent must be specified")
+
         self.total_steps = 0
 
         episode_rewards = []
@@ -408,6 +417,8 @@ class TD3:
                 start_ep = perf_counter()
 
                 state, info = self.env.reset()
+                if self.env_string == "HockeyEnv" or self.env_string == "LaserHockeyEnv":
+                    state_opponent = self.env.obs_agent_two()
                 self.reset()
                 done = False
                 steps = 0
@@ -420,8 +431,15 @@ class TD3:
                     action = self.get_action(state)
                     # print(f"get action took: {(perf_counter() - start_act)*self.steps_max}")
                     # take action, save transition
-                    next_state, reward, terminated, truncated, _ = self.env.step(action)
+                    if self.env_string == "HockeyEnv" or self.env_string == "LaserHockeyEnv":
+                        action_opponent = hockey_opponent.act(state_opponent)
+                        next_state, reward, terminated, truncated, _ = self.env.step(np.hstack((action, action_opponent)))
+                    else:
+                        next_state, reward, terminated, truncated, _ = self.env.step(action)
                     done = terminated or truncated
+
+                    if self.env_string == "HockeyEnv" or self.env_string == "LaserHockeyEnv":
+                        state_opponent = self.env.obs_agent_two()
 
                     self.replay_buffer.push(state, action, reward, next_state, done)
                     state = next_state
@@ -517,12 +535,15 @@ class TD3:
         )
 
     def test(self, noise_enabled=False, render_mode=None):
+        hockey_opponent = self.hockey_opponent
         # set render mode
         env = None
         if self.env_string == "LunarLander-v2":
             env = gym.make(self.env_string, continuous=True, render_mode=render_mode)
-        elif self.env_string == "HockeyEnv":
-            env = self.env
+        elif self.env_string == "HockeyEnv" or self.env_string == "LaserHockeyEnv":
+            if hockey_opponent is None:
+                raise ValueError("Hockey opponent must be specified")
+            return self.hockey_test(render_mode=render_mode, noise_enabled=noise_enabled)
         else:
             env = gym.make(self.env_string, render_mode=render_mode)
 
@@ -532,15 +553,38 @@ class TD3:
         rewards = []
         while not done and step < self.steps_max:
             action = self.get_action(state, noise=noise_enabled)
-            state, reward, done, _, _ = env.step(action)
+            state, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
             rewards.append(reward)
             step += 1
-            if render_mode == "human" and self.env_string == "HockeyEnv":
+            if render_mode == "human" and self.env_string == "HockeyEnv" or self.env_string == "LaserHockeyEnv":
                 env.render(mode="human")
-        if render_mode == "human" and not self.env_string == "HockeyEnv":
+        if render_mode == "human" and not (self.env_string == "HockeyEnv" or self.env_string == "LaserHockeyEnv"):
             # close window
             env.close()
         return np.sum(rewards)
+
+    def hockey_test(self, noise_enabled=False, render_mode=None):
+        hockey_opponent = self.hockey_opponent
+        env = self.env
+
+        state, info = env.reset()
+        obs_agent2 = env.obs_agent_two()
+        done = False
+        step = 0
+        rewards = []
+        while not done and step < self.steps_max:
+            action = self.get_action(state, noise=noise_enabled)
+            action_opponent = hockey_opponent.act(obs_agent2)
+            state, reward, terminated, truncated, _ = env.step(np.hstack((action, action_opponent)))
+            done = terminated or truncated
+            obs_agent2 = env.obs_agent_two()
+            rewards.append(reward)
+            step += 1
+            if render_mode == "human":
+                env.render(mode="human")
+        return np.sum(rewards)
+
 
     @staticmethod
     def update_target(net, target, rho=0.995):
