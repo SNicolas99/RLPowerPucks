@@ -521,7 +521,7 @@ class TD3:
         env = None
         if self.env_string == "LunarLander-v2":
             env = gym.make(self.env_string, continuous=True, render_mode=render_mode)
-        elif self.env_string == "HockeyEnv-v0" or self.env_string == "Hockey-One-v0":
+        elif self.env_string == "HockeyEnv":
             env = self.env
         else:
             env = gym.make(self.env_string, render_mode=render_mode)
@@ -535,10 +535,9 @@ class TD3:
             state, reward, done, _, _ = env.step(action)
             rewards.append(reward)
             step += 1
-            if render_mode == "human" and self.env_string == "HockeyEnv-v0" or self.env_string == "Hockey-One-v0":
+            if render_mode == "human" and self.env_string == "HockeyEnv":
                 env.render(mode="human")
-
-        if render_mode == "human" and not (self.env_string == "HockeyEnv-v0" or self.env_string == "Hockey-One-v0"):
+        if render_mode == "human" and not self.env_string == "HockeyEnv":
             # close window
             env.close()
         return np.sum(rewards)
