@@ -51,11 +51,11 @@ class TD3:
         update_every=1,
         policy_update_freq=2,
         epochs=300,
-        buffer_size=100000,
+        buffer_size=10000,
         action_noise_scale=0.1,
         target_action_noise_scale=0.2,
         target_action_noise_clip=0.5,
-        h=64,
+        h=256,
         test_interval=10,
         play_interval=1000,
         prioritized_replay=True,
@@ -92,7 +92,10 @@ class TD3:
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size, prioritized_replay=prioritized_replay)
 
         n_obs = env.observation_space.shape[0]
-        n_act = env.action_space.shape[0]
+        action_space_shape = env.action_space.shape
+        if env_string == "HockeyEnv":
+            action_space_shape = (int(env.action_space.shape[0] / 2), )
+        n_act = action_space_shape[0]
 
         q1 = FeedforwardNetwork(n_obs + n_act, 1, act_out=nn.Identity(), h=h)
         q2 = FeedforwardNetwork(n_obs + n_act, 1, act_out=nn.Identity(), h=h)
@@ -130,18 +133,18 @@ class TD3:
         )
 
         # define scaler
-        self.scaler = Scaler(self.env)
+        self.scaler = Scaler(self.env, hockey=env_string=="HockeyEnv")
 
         # define noise generator
         if self.noise_mode == "ornstein-uhlenbeck":
             self.noise_generator = OUActionNoise(
-                mean=np.zeros(self.env.action_space.shape),
+                mean=np.zeros(action_space_shape),
                 std_deviation=self.action_noise_scale
-                * np.ones(self.env.action_space.shape),
+                * np.ones(action_space_shape),
             )
         elif self.noise_mode == "gaussian":
             self.noise_generator = lambda: np.random.normal(
-                0, self.action_noise_scale, self.env.action_space.shape
+                0, self.action_noise_scale, action_space_shape
             )
         else:
             raise ValueError("Unknown noise mode")
@@ -357,6 +360,8 @@ class TD3:
     def get_action(self, state, noise=True):
         if self.total_steps < self.start_steps:
             action = self.env.action_space.sample()
+            if self.env_string == "HockeyEnv":
+                action = action[:4]
         else:
             state = to_torch(state)
             action = self.get_policy_action(state).detach()
@@ -367,6 +372,8 @@ class TD3:
                     action = torch.clamp(action, -1, 1)
             # scale from [-1, 1] to action space scales
             action = self.scaler.scale_action(action).numpy()
+        if self.env_string == "HockeyEnv" and np.sum(action.shape) > 4:
+            print("Action too big !!!!!!!!!!!!!")
         return action
 
     def train(self):
@@ -397,7 +404,7 @@ class TD3:
             # for epoch in tqdm(range(self.epochs)):
             for epoch in range(self.epochs):
                 if epoch > 0 and epoch % test_interval == 0:
-                    test_reward = self.test(noise_enabled=False, render_mode=None)
+                    test_reward = np.mean([self.test(noise_enabled=False, render_mode=None) for _ in range(10)])
                     test_rewards.append(test_reward)
                     # print reward without breaking tqdm
                     print(

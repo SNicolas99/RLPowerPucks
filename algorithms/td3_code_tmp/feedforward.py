@@ -5,7 +5,7 @@ import torch.nn as nn
 # define ffw network
 class FeedforwardNetwork(nn.Module):
     def __init__(
-        self, input_size, output_size, act=torch.tanh, act_out=torch.tanh, h=256
+        self, input_size, output_size, act=torch.tanh, act_out=torch.tanh, h=64
     ):
         super(FeedforwardNetwork, self).__init__()
         self.fc1 = nn.Linear(input_size, h)

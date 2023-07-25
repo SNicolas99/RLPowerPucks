@@ -3,12 +3,19 @@ import numpy as np
 
 
 class Scaler:
-    def __init__(self, env):
+    def __init__(self, env, hockey=False):
         self.env = env
         self.action_space = env.action_space
-        self.action_low = torch.tensor(self.action_space.low, dtype=torch.float32, requires_grad=False)
-        self.action_high = torch.tensor(self.action_space.high, dtype=torch.float32, requires_grad=False)
-        self.action_range = self.action_high - self.action_low
+
+        if hockey:
+            self.action_low = torch.tensor(self.action_space.low[:4], dtype=torch.float32, requires_grad=False)
+            self.action_high = torch.tensor(self.action_space.high[:4], dtype=torch.float32, requires_grad=False)
+            self.action_range = self.action_high - self.action_low
+        else:
+            self.action_low = torch.tensor(self.action_space.low, dtype=torch.float32, requires_grad=False)
+            self.action_high = torch.tensor(self.action_space.high, dtype=torch.float32, requires_grad=False)
+            self.action_range = self.action_high - self.action_low
+
         self.observation_space = env.observation_space
         self.observation_low = torch.tensor(
             self.observation_space.low, dtype=torch.float32, requires_grad=False
