@@ -5,15 +5,15 @@ import numpy as np
 class Scaler:
     def __init__(self, env, hockey=False):
         self.env = env
-        self.action_space = env.action_space
+        action_space = env.action_space
 
         if hockey:
-            self.action_low = torch.tensor(self.action_space.low[:4], dtype=torch.float32, requires_grad=False)
-            self.action_high = torch.tensor(self.action_space.high[:4], dtype=torch.float32, requires_grad=False)
+            self.action_low = torch.tensor(action_space.low[:4], dtype=torch.float32, requires_grad=False)
+            self.action_high = torch.tensor(action_space.high[:4], dtype=torch.float32, requires_grad=False)
             self.action_range = self.action_high - self.action_low
         else:
-            self.action_low = torch.tensor(self.action_space.low, dtype=torch.float32, requires_grad=False)
-            self.action_high = torch.tensor(self.action_space.high, dtype=torch.float32, requires_grad=False)
+            self.action_low = torch.tensor(action_space.low, dtype=torch.float32, requires_grad=False)
+            self.action_high = torch.tensor(action_space.high, dtype=torch.float32, requires_grad=False)
             self.action_range = self.action_high - self.action_low
 
         self.observation_space = env.observation_space
@@ -54,3 +54,25 @@ class Scaler:
         if not self.observation_scaling:
             return state
         return ((state - self.observation_low) / self.observation_range)*2 - 1.0
+    
+    def save(self, filename):
+        torch.save(
+            {
+                "action_low": self.action_low,
+                "action_high": self.action_high,
+                "action_range": self.action_range,
+                "observation_low": self.observation_low,
+                "observation_high": self.observation_high,
+                "observation_range": self.observation_range,
+            },
+            filename,
+        )
+    
+    def load(self, filename):
+        data = torch.load(filename)
+        self.action_low = data["action_low"]
+        self.action_high = data["action_high"]
+        self.action_range = data["action_range"]
+        self.observation_low = data["observation_low"]
+        self.observation_high = data["observation_high"]
+        self.observation_range = data["observation_range"]

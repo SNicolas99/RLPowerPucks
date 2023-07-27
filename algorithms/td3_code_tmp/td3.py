@@ -51,14 +51,14 @@ class TD3:
         update_every=1,
         policy_update_freq=2,
         epochs=300,
-        buffer_size=10000,
+        buffer_size=50000,
         action_noise_scale=0.1,
-        target_action_noise_scale=0.2,
-        target_action_noise_clip=0.5,
-        h=256,
+        target_action_noise_scale=0.05,
+        target_action_noise_clip=0.25,
+        h=64,
         test_interval=10,
         play_interval=1000,
-        prioritized_replay=True,
+        prioritized_replay=False,
         noise_mode="ornstein-uhlenbeck",
         hockey_opponent=None,
     ):
@@ -151,6 +151,19 @@ class TD3:
 
         self.train_iter = 0
         self.total_steps = 0
+
+        # define save paths
+        self.buffer_path = "buffer.pt"
+        self.scaler_path = "scaler.pt"
+        self.save_path = "model.pt"
+        
+        self.q1_path = "q1.pt"
+        self.q2_path = "q2.pt"
+        self.policy_path = "policy.pt"
+        self.target_q1_path = "target_q1.pt"
+        self.target_q2_path = "target_q2.pt"
+        self.target_policy_path = "target_policy.pt"
+
 
     def reset(self):
         if self.noise_mode == "ornstein-uhlenbeck":
@@ -591,6 +604,39 @@ class TD3:
             if render_mode == "human":
                 env.render(mode="human")
         return np.sum(rewards)
+    
+    def save(self):
+
+        # torch.save(self.q1, self.q1_path)
+        # torch.save(self.q2, self.q2_path)
+        # torch.save(self.policy, self.policy_path)
+        # torch.save(self.target_q1, self.target_q1_path)
+        # torch.save(self.target_q2, self.target_q2_path)
+        # torch.save(self.target_policy, self.target_policy_path)
+
+        # self.replay_buffer.save(self.buffer_path)
+        # self.scaler.save(self.scaler_path)
+
+        state_dict = {}
+        for key, value in self.__dict__.items():
+            if key[0] != "_" and not "__init__" in str(value):
+                state_dict[key] = value
+        torch.save(state_dict, self.save_path)
+
+    def load(self):
+            # self.q1 = torch.load(self.q1_path)
+            # self.q2 = torch.load(self.q2_path)
+            # self.policy = torch.load(self.policy_path)
+            # self.target_q1 = torch.load(self.target_q1_path)
+            # self.target_q2 = torch.load(self.target_q2_path)
+            # self.target_policy = torch.load(self.target_policy_path)
+    
+            # self.replay_buffer.load(self.buffer_path)
+            # self.scaler.load(self.scaler_path)
+    
+            state_dict = torch.load(self.save_path)
+            for key in state_dict:
+                setattr(self, key, state_dict[key])
 
 
     @staticmethod

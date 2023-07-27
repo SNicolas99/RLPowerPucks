@@ -14,6 +14,7 @@ class ReplayBufferPrioritized:
         self.last_batch_inds = None
 
         self.buffer = np.full(buffer_size, None, dtype=object)
+        self.weights = None
         if self.prioritized_replay:
             self.weights = np.full(buffer_size, self.init_weight, dtype=np.float32)
 
@@ -85,3 +86,25 @@ class ReplayBufferPrioritized:
             if isinstance(shape, int):
                 shape = (shape,)
             return (np.random.rand(*shape) * self.size).astype(int)
+    
+    def save(self, path):
+        state = {
+            "buffer": self.buffer,
+            "buffer_size": self.buffer_size,
+            "weights": self.weights,
+            "current_index": self.current_index,
+            "size": self.size,
+            "prioritized_replay": self.prioritized_replay,
+            "last_batch_inds": self.last_batch_inds,
+        }
+        torch.save(state, path)
+    
+    def load(self, path):
+        state = torch.load(path)
+        self.buffer = state["buffer"]
+        self.buffer_size = state["buffer_size"]
+        self.weights = state["weights"]
+        self.current_index = state["current_index"]
+        self.size = state["size"]
+        self.prioritized_replay = state["prioritized_replay"]
+        self.last_batch_inds = state["last_batch_inds"]
