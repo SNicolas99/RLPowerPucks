@@ -1,0 +1,105 @@
+import os
+import numpy as np
+import torch as T
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+## For source see https://www.youtube.com/watch?v=H9uCYnG3LlE
+class DuelingDeepQNetwork(nn.Module):
+    def __init__(self, input_dims, device):
+        super(DuelingDeepQNetwork, self).__init__()
+
+
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+
+        ## TODO try different sizes of the network,
+        ##  e.g. add layers or change number of neurons (maybe add another layer before both A & V)
+        self.fc1 = nn.Linear(input_dims, 256)
+
+        # TODO maybe implement this as a list later to add more layers
+        self.A1 = nn.Linear(256,256)
+        self.V1 = nn.Linear(256,256)
+        self.A2 = nn.Linear(256,256)
+        self.V2 = nn.Linear(256,256)
+
+        self.A_stream = nn.Linear(256, 8)
+        self.V_stream = nn.Linear(256, 1)
+
+
+    def forward(self, x):
+        if self.device.type == 'cuda' and x.device.type != 'cuda':
+            x = x.to(self.device)
+
+        x = nn.functional.relu(self.fc1(x))
+
+        x_A = nn.functional.relu(self.A1(x))
+        x_V = nn.functional.relu(self.V1(x))
+        x_A = nn.functional.relu(self.A2(x_A))
+        x_V = nn.functional.relu(self.V2(x_V))
+
+        A = self.A_stream(x_A)
+        V = self.V_stream(x_V)
+
+        Q = T.add(V, (A - A.mean(dim=-1, keepdim=True)))
+        return Q
+
+    ## TODO Maybe adapt this a bit (source)
+    def predict(self, x):
+        with T.no_grad():
+            return self.forward(T.from_numpy(x.astype(np.float32))).numpy()
+
+    def save_checkpoint(self):
+        print('-> Saving Checkpoint')
+        T.save(self.state_dict(), self.checkpoint_file)
+
+    def load_checkpoint(self):
+        print('-> Loading Checkpoint')
+        self.load_state_dict(T.load(self.checkpoint_file))
+
+
+## Took this class 1:1 from the exercises and made minor changes/enhancements
+class QFunction(DuelingDeepQNetwork):
+    def __init__(self, observation_dim, action_dim,
+                 lr, device):
+        super().__init__(input_dims=observation_dim,
+                         device=device)
+
+        self.loss = nn.SmoothL1Loss() # MSELoss()
+        self.lr = lr
+        self.optimizer=optim.Adam(self.parameters(),
+                                  lr=self.lr)
+
+    def fit(self, observations, actions, targets):
+        self.train() # put model in training mode
+        self.optimizer.zero_grad()
+        # Forward pass
+        pred = self.Q_value(observations, actions)
+        # Compute Loss
+        loss = self.loss(pred, T.from_numpy(targets).float())
+        ## TODO think about weighting the loss
+        # Backward pass
+        loss.backward()
+        self.optimizer.step()
+        return loss.item()
+
+
+    def Q_value(self, observations, actions):
+        return T.gather(self.forward(T.from_numpy(observations).to(self.device).float()), 1, T.from_numpy(actions[:,None]).to(self.device).long())
+
+    def maxQ(self, observations):
+        # compute the maximal Q-value
+        return np.max(self.predict(observations), axis=-1)
+
+    def greedyAction(self, observations):
+        # this computes the greedy action
+        return np.argmax(self.predict(observations), axis=-1)
+
+
+
+
+
+
+
+
+
