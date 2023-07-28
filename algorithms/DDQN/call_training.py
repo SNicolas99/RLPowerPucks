@@ -42,6 +42,7 @@ parsed_args = arg_parser.parse_args()
 
 if __name__ == '__main__':
     parsed_args.device = T.device('cuda' if parsed_args.cuda and T.cuda.is_available() else 'cpu')
+    print("device: " + str(parsed_args))
 
     if parsed_args.training_mode == 'normal':
         mode = env.HockeyEnv_BasicOpponent.NORMAL

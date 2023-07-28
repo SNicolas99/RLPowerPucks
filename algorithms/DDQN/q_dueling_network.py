@@ -64,6 +64,9 @@ class QFunction(DuelingDeepQNetwork):
         super().__init__(input_dims=observation_dim,
                          device=device)
 
+        if device.type == 'cuda':
+            self.cuda()
+
         self.loss = nn.SmoothL1Loss() # MSELoss()
         self.lr = lr
         self.optimizer=optim.Adam(self.parameters(),
