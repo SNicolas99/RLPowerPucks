@@ -121,8 +121,8 @@ class Trainer:
                     result_list.append(env.winner)
                     break
 
-                #if step_count % self.config['experience_replay_frequency'] == 0:
-                   # exp_replay_loss.append(self.agent.train())
+                if step_count % self.config['experience_replay_frequency'] == 0:
+                    exp_replay_loss.append(self.agent.train())
 
                 ob = ob_new
                 step_count += 1
