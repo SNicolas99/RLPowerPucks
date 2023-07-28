@@ -10,9 +10,8 @@ class DuelingDeepQNetwork(nn.Module):
     def __init__(self, input_dims, device):
         super(DuelingDeepQNetwork, self).__init__()
 
-
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
-
+        if device.type == 'cuda':
+            self.cuda()
         ## TODO try different sizes of the network,
         ##  e.g. add layers or change number of neurons (maybe add another layer before both A & V)
         self.fc1 = nn.Linear(input_dims, 256)
