@@ -1,6 +1,6 @@
 import gymnasium as gym
 from laserhockey.laserhockey.laser_hockey_env import LaserHockeyEnv
-from laserhockey.laserhockey.hockey_env import HockeyEnv
+from algorithms.DDQN.hockey_env import HockeyEnv
 
 class GymEnvironment:
     """

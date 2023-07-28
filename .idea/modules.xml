@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/RLPowerPucks.iml" filepath="$PROJECT_DIR$/.idea/RLPowerPucks.iml" />
+      <module fileurl="file://$PROJECT_DIR$/RLPowerPucks.iml" filepath="$PROJECT_DIR$/RLPowerPucks.iml" />
     </modules>
   </component>
 </project>

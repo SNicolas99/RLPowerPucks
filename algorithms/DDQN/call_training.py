@@ -1,7 +1,7 @@
 import logger
 from argparse import ArgumentParser
 import torch as T
-import laserhockey.laserhockey.hockey_env as env
+import hockey_env as env
 from agent import DQNAgent
 from training import Trainer
 import os
