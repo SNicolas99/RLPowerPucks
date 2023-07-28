@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-import algorithms.DDQN.hockey_env as h_env
+import hockey_env as h_env
 import os
 
 
