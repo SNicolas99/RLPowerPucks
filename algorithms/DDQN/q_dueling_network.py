@@ -68,6 +68,7 @@ class QFunction(DuelingDeepQNetwork):
         self.lr = lr
         self.optimizer=optim.Adam(self.parameters(),
                                   lr=self.lr)
+        self.device = device
 
     def fit(self, observations, actions, targets):
         self.train() # put model in training mode
