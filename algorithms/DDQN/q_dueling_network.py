@@ -79,7 +79,7 @@ class QFunction(DuelingDeepQNetwork):
         # Forward pass
         pred = self.Q_value(observations, actions)
         # Compute Loss
-        loss = self.loss(pred, T.from_numpy(targets).float())
+        loss = self.loss(pred, T.from_numpy(targets).to(self.device).float())
         ## TODO think about weighting the loss
         # Backward pass
         loss.backward()
