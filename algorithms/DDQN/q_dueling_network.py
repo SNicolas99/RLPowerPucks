@@ -46,7 +46,7 @@ class DuelingDeepQNetwork(nn.Module):
     ## TODO Maybe adapt this a bit (source)
     def predict(self, x):
         with T.no_grad():
-            return self.forward(T.from_numpy(x.astype(np.float32))).numpy()
+            return self.forward(T.from_numpy(x.astype(np.float32))).cpu().numpy()
 
     def save_checkpoint(self):
         print('-> Saving Checkpoint')
