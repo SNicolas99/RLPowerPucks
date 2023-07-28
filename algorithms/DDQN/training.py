@@ -77,7 +77,8 @@ class Trainer:
             if (episode_count % 20) == 0:
                 logger.print_time_info(episode_count=episode_count, max_episodes=max_episodes, start_time=start_time)
             if (episode_count % 1000) == 0:
-                self.logger.plot_win_percentage(result_list)
+                self.logger.plot_win_percentage(outcomes=result_list)
+                self.logger.print_win_every_1000(result_list=result_list, episode_count=episode_count)
 
             # Reset the environment every episode
             ob = env.reset()  # returns obs, info
@@ -120,8 +121,8 @@ class Trainer:
                     result_list.append(env.winner)
                     break
 
-                if step_count % self.config['experience_replay_frequency']:
-                    exp_replay_loss.append(self.agent.train())
+                #if step_count % self.config['experience_replay_frequency'] == 0:
+                   # exp_replay_loss.append(self.agent.train())
 
                 ob = ob_new
                 step_count += 1

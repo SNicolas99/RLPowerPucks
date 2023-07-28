@@ -2,12 +2,27 @@
 from matplotlib import pyplot as plt
 import time
 import os
+import numpy as np
 
 
 class Logger:
     def __init__(self, log_directory, config) -> None:
         self.log_directory = log_directory
         self.config = config
+
+    def print_win_every_1000(self, result_list, episode_count):
+
+        result_list = np.array(result_list[episode_count-1000:episode_count])
+
+        loss_count = np.count_nonzero(result_list == -1)
+        win_count = np.count_nonzero(result_list == 1)
+        print("Wins: " + str(win_count) + " | Losses: " + str(loss_count))
+
+        print("Win/Lose: " + str(win_count/loss_count))
+
+
+
+
 
     def plot_win_percentage(self, outcomes, final=False):
         win_count = 0

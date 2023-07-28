@@ -5,6 +5,7 @@ from q_dueling_network import QFunction
 import torch as T
 from memory import Memory, PER_Memory
 import os
+import time
 
 
 ## Took parts from exercise
@@ -85,7 +86,10 @@ class DQNAgent():
         td_target = rew + gamma * (1.0-done) * v_prime
 
             # optimize the lsq objective
+        start_time_loss = time.time()
         fit_loss = self.Q.fit(s, a, td_target)
+        end_time_loss = time.time()
+        #print("total_fit_time: " + str(end_time_loss-start_time_loss))
 
         return fit_loss
 

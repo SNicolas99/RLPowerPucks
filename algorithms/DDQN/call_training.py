@@ -14,10 +14,11 @@ arg_parser.add_argument('-e', '--epsilon', type=float, default=1)
 arg_parser.add_argument('--e_min', type=float, default=0.1)
 arg_parser.add_argument('--e_decay', type=float, default=0.0005)
 
-arg_parser.add_argument('--batch_size', type=int, default=32)
+## TODO find out whether 16,32, 64 is better for batch size
+arg_parser.add_argument('--batch_size', type=int, default=16)
 arg_parser.add_argument('--discount', type=float, default=0.98)
 arg_parser.add_argument('--gradient_update_frequency', type=int, default=800)
-arg_parser.add_argument('--step_max', type=int, default=300)
+arg_parser.add_argument('--step_max', type=int, default=200)
 arg_parser.add_argument('--num_episodes', type=int, default=20)
 arg_parser.add_argument('--training_mode', default='normal')
 arg_parser.add_argument('--cuda', action='store_true')
@@ -26,8 +27,9 @@ arg_parser.add_argument('--render_training', action='store_true')
 arg_parser.add_argument('--weight_path', type=str, default="")
 arg_parser.add_argument('--save_weights', type=bool, default=False)
 arg_parser.add_argument('--use_existing_weights', type=bool, default=False)
-arg_parser.add_argument('--buffer_size', type=int, default=1000000)
-arg_parser.add_argument('--experience_replay_frequency', type=int, default=5)
+## TODO play with buffer_size and experience_replay_frequency
+arg_parser.add_argument('--buffer_size', type=int, default=100000)
+arg_parser.add_argument('--experience_replay_frequency', type=int, default=10)
 arg_parser.add_argument('--use_target_net', default=True)
 # Arguments for Prioritized Experience Replay
 arg_parser.add_argument('--PER', default=False)
@@ -43,6 +45,7 @@ parsed_args = arg_parser.parse_args()
 if __name__ == '__main__':
     parsed_args.device = T.device('cuda' if parsed_args.cuda and T.cuda.is_available() else 'cpu')
     print("device: " + str(parsed_args))
+    print(str(parsed_args.device.type))
 
     if parsed_args.training_mode == 'normal':
         mode = env.HockeyEnv_BasicOpponent.NORMAL

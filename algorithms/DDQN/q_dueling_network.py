@@ -4,6 +4,7 @@ import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import time
 
 ## For source see https://www.youtube.com/watch?v=H9uCYnG3LlE
 class DuelingDeepQNetwork(nn.Module):
@@ -96,7 +97,10 @@ class QFunction(DuelingDeepQNetwork):
 
     def greedyAction(self, observations):
         # this computes the greedy action
-        return np.argmax(self.predict(observations), axis=-1)
+        start_predict = time.time()
+        i = np.argmax(self.predict(observations), axis=-1)
+        #print("predict time: " + str(time.time() - start_predict))
+        return i
 
 
 
