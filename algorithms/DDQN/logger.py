@@ -12,7 +12,10 @@ class Logger:
 
     def print_win_every_1000(self, result_list, episode_count):
 
-        result_list = np.array(result_list[episode_count-1000:episode_count])
+
+
+        i = episode_count-1000
+        result_list = np.array(result_list[i:episode_count])
 
         loss_count = np.count_nonzero(result_list == -1)
         win_count = np.count_nonzero(result_list == 1)
