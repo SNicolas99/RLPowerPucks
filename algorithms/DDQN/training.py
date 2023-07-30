@@ -129,7 +129,7 @@ class Trainer:
                 ob = ob_new
                 step_count += 1
 
-                if grd_upd_frq % step_count == 0:
+                if step_count % grd_upd_frq == 0:
                     self.agent.update_target_net()
 
                 ob2 = env.obs_agent_two()
