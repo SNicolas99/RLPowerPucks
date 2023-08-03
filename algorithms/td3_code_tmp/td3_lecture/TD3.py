@@ -51,7 +51,7 @@ class QFunction(Feedforward):
         return self.forward(torch.hstack([observations,actions]))
 
 class OUNoise():
-    def __init__(self, shape, theta: float = 0.15, dt: float = 1e-2):
+    def __init__(self, shape, theta: float = 0.05, dt: float = 1e-2):
         self._shape = shape
         self._theta = theta
         self._dt = dt
