@@ -88,15 +88,15 @@ class TD3(object):
         self._action_space = action_space
         self._action_n = action_space.shape[0]
         self._config = {
-            "eps": 0.1,            # Epsilon: noise strength to add to policy
-            "discount": 0.95,
-            "buffer_size": int(1e6),
-            "batch_size": 128,
-            "learning_rate_actor": 0.00001,
+            "eps": 0.2,            # Epsilon: noise strength to add to policy # 0.1
+            "discount": 0.995, # 0.95
+            "buffer_size": int(1e6), # 1e6
+            "batch_size": 128, #128
+            "learning_rate_actor": 0.00001, # 0.00001
             "learning_rate_critic": 0.0001,
             "hidden_sizes_actor": [256,256],
             "hidden_sizes_critic": [256,256,256],
-            "update_target_every": 100,
+            "update_target_every": 100, # 100
             "use_target_net": True
         }
         self._config.update(userconfig)
