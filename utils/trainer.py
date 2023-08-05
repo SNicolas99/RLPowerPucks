@@ -31,13 +31,13 @@ class Trainer:
                 
                 if done or _trunc:
                     break
-            steps.append(t)
+            steps.append(t+1)
             rewards.append(ep_reward)
             ep_reward = 0
         observations = np.asarray(observations)
         actions = np.asarray(actions)
         rewards = np.asarray(rewards)
-        steps = np.asarray(steps)
+        steps = np.asarray(steps, dtype=np.float32)
         return steps, rewards, observations, actions
 
     def train(self, env, agent, n_episodes=1000, train_every=1, test_every=100, n_test_episodes=20, noise=0.2):
