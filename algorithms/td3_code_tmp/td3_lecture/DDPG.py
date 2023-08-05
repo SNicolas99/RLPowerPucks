@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.distributions import MultivariateNormal
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
@@ -8,9 +7,8 @@ import optparse
 import pickle
 
 import memory as mem
-from feedforward import Feedforward
+from feedforward import Feedforward, to_torch
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.set_num_threads(1)
 
 class UnsupportedSpace(Exception):
@@ -31,7 +29,7 @@ class QFunction(Feedforward):
         self.optimizer=torch.optim.Adam(self.parameters(),
                                         lr=learning_rate,
                                         eps=0.000001)
-        self.loss = torch.nn.SmoothL1Loss()
+        self.loss = nn.SmoothL1Loss()
 
     def fit(self, observations, actions, targets): # all arguments should be torch tensors
         self.train() # put model in training mode
@@ -39,7 +37,6 @@ class QFunction(Feedforward):
         # Forward pass
 
         pred = self.Q_value(observations,actions)
-        # Compute Loss
         loss = self.loss(pred, targets)
 
         # Backward pass
@@ -51,7 +48,7 @@ class QFunction(Feedforward):
         return self.forward(torch.hstack([observations,actions]))
 
 class OUNoise():
-    def __init__(self, shape, theta: float = 0.15, dt: float = 1e-2):
+    def __init__(self, shape, theta: float = 0.05, dt: float = 1e-2):
         self._shape = shape
         self._theta = theta
         self._dt = dt
@@ -88,15 +85,15 @@ class DDPGAgent(object):
         self._action_space = action_space
         self._action_n = action_space.shape[0]
         self._config = {
-            "eps": 0.1,            # Epsilon: noise strength to add to policy
-            "discount": 0.95,
-            "buffer_size": int(1e6),
-            "batch_size": 128,
-            "learning_rate_actor": 0.00001,
+            "eps": 0.1,            # Epsilon: noise strength to add to policy # 0.1
+            "discount": 0.995, # 0.95
+            "buffer_size": int(2e5), # 1e6
+            "batch_size": 128, #128
+            "learning_rate_actor": 0.00001, # 0.00001
             "learning_rate_critic": 0.0001,
             "hidden_sizes_actor": [256,256],
             "hidden_sizes_critic": [256,256,256],
-            "update_target_every": 100,
+            "update_target_every": 100, # 100
             "use_target_net": True
         }
         self._config.update(userconfig)
@@ -121,18 +118,20 @@ class DDPGAgent(object):
                                   hidden_sizes= self._config["hidden_sizes_actor"],
                                   output_size=self._action_n,
                                   activation_fun = torch.nn.ReLU(),
-                                  output_activation = torch.nn.Tanh())
+                                  output_activation = torch.nn.Tanh(),
+        )
         self.policy_target = Feedforward(input_size=self._obs_dim,
                                          hidden_sizes= self._config["hidden_sizes_actor"],
                                          output_size=self._action_n,
                                          activation_fun = torch.nn.ReLU(),
-                                         output_activation = torch.nn.Tanh())
+                                         output_activation = torch.nn.Tanh(),
+        )
+        self.optimizer=torch.optim.Adam(self.policy.parameters(),
+                                lr=self._config["learning_rate_actor"],
+                                eps=0.000001)
 
         self._copy_nets()
 
-        self.optimizer=torch.optim.Adam(self.policy.parameters(),
-                                        lr=self._config["learning_rate_actor"],
-                                        eps=0.000001)
         self.train_iter = 0
 
     def _copy_nets(self):
@@ -143,7 +142,7 @@ class DDPGAgent(object):
         if eps is None:
             eps = self._eps
         #
-        action = self.policy.predict(observation) + eps*self.action_noise()  # action in -1 to 1 (+ noise)
+        action = self.policy.predict(to_torch(observation)) + eps*self.action_noise()  # action in -1 to 1 (+ noise)
         action = self._action_space.low + (action + 1.0) / 2.0 * (self._action_space.high - self._action_space.low)
         return action
 
@@ -162,7 +161,6 @@ class DDPGAgent(object):
         self.action_noise.reset()
 
     def train(self, iter_fit=32):
-        to_torch = lambda x: torch.from_numpy(x.astype(np.float32))
         losses = []
         self.train_iter+=1
         if self._config["use_target_net"] and self.train_iter % self._config["update_target_every"] == 0:
@@ -171,6 +169,7 @@ class DDPGAgent(object):
 
             # sample from the replay buffer
             data=self.buffer.sample(batch=self._config['batch_size'])
+
             s = to_torch(np.stack(data[:,0])) # s_t
             a = to_torch(np.stack(data[:,1])) # a_t
             rew = to_torch(np.stack(data[:,2])[:,None]) # rew  (batchsize,1)
@@ -178,7 +177,8 @@ class DDPGAgent(object):
             done = to_torch(np.stack(data[:,4])[:,None]) # done signal  (batchsize,1)
 
             if self._config["use_target_net"]:
-                q_prime = self.Q_target.Q_value(s_prime, self.policy_target.forward(s_prime))
+                target_action = self.policy_target.forward(s_prime)
+                q_prime = self.Q_target.Q_value(s_prime, target_action)
             else:
                 q_prime = self.Q.Q_value(s_prime, self.policy.forward(s_prime))
             # target
@@ -247,7 +247,7 @@ def main():
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
-    ddpg = DDPGAgent(env.observation_space, env.action_space, eps = eps, learning_rate_actor = lr,
+    agent = DDPGAgent(env.observation_space, env.action_space, eps = eps, learning_rate_actor = lr,
                      update_target_every = opts.update_every)
 
     # logging variables
@@ -264,19 +264,19 @@ def main():
     # training loop
     for i_episode in range(1, max_episodes+1):
         ob, _info = env.reset()
-        ddpg.reset()
+        agent.reset()
         total_reward=0
         for t in range(max_timesteps):
             timestep += 1
             done = False
-            a = ddpg.act(ob)
+            a = agent.act(ob)
             (ob_new, reward, done, trunc, _info) = env.step(a)
             total_reward+= reward
-            ddpg.store_transition((ob, a, reward, ob_new, done))
+            agent.store_transition((ob, a, reward, ob_new, done))
             ob=ob_new
             if done or trunc: break
 
-        losses.extend(ddpg.train(train_iter))
+        losses.extend(agent.train(train_iter))
 
         rewards.append(total_reward)
         lengths.append(t)
@@ -284,7 +284,7 @@ def main():
         # save every 500 episodes
         if i_episode % 500 == 0:
             print("########## Saving a checkpoint... ##########")
-            torch.save(ddpg.state(), f'./results/DDPG_{env_name}_{i_episode}-eps{eps}-t{train_iter}-l{lr}-s{random_seed}.pth')
+            torch.save(agent.state(), f'./results/DDPG_{env_name}_{i_episode}-eps{eps}-t{train_iter}-l{lr}-s{random_seed}.pth')
             save_statistics()
 
         # logging
