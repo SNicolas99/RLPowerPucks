@@ -53,7 +53,12 @@ class Logger:
         actor_losses = np.array(self.actor_losses)
         critic_losses = np.array(self.critic_losses)
 
-        plt.plot(savgol_filter(test_rewards, 51, 3, axis=0), label='test reward')
+        if test_rewards.size == 0:
+            print('No test rewards to plot')
+        elif test_rewards.size < 10:
+            plt.plot(test_rewards, label='test reward')
+        else:
+            plt.plot(savgol_filter(test_rewards, 10, 3, axis=0), label='test reward')
         plt.title('test reward')
         plt.show()
 
@@ -88,7 +93,8 @@ class Logger:
             'actor_losses': self.actor_losses,
             'critic_losses': self.critic_losses,
             'ep_durations': self.ep_durations,
-            'train_durations': self.train_durations
+            'train_durations': self.train_durations,
+            'test_rewards': self.test_rewards,
         }
         np.save(path, state)
     
@@ -100,3 +106,4 @@ class Logger:
         self.critic_losses = state['critic_losses']
         self.ep_durations = state['ep_durations']
         self.train_durations = state['train_durations']
+        self.test_rewards = state['test_rewards']

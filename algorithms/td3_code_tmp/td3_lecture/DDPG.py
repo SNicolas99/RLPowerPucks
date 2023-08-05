@@ -6,7 +6,10 @@ from gymnasium import spaces
 import optparse
 import pickle
 
-import memory as mem
+import sys
+sys.path.append('../../..') # TODO: adjust path
+
+from utils.memory import ReplayBuffer
 from feedforward import Feedforward, to_torch
 
 torch.set_num_threads(1)
@@ -93,15 +96,16 @@ class DDPGAgent(object):
             "learning_rate_critic": 0.0001,
             "hidden_sizes_actor": [256,256],
             "hidden_sizes_critic": [256,256,256],
-            "update_target_every": 100, # 100
-            "use_target_net": True
+            "tau": 0.0025, # 0.0025
+            "use_target_net": True,
+            "use_prioritized_replay": False,
         }
         self._config.update(userconfig)
         self._eps = self._config['eps']
 
         self.action_noise = OUNoise((self._action_n))
 
-        self.buffer = mem.Memory(max_size=self._config["buffer_size"])
+        self.buffer = ReplayBuffer(buffer_size=self._config["buffer_size"], prioritized_replay=self._config["use_prioritized_replay"])
 
         # Q Network
         self.Q = QFunction(observation_dim=self._obs_dim,
@@ -138,6 +142,12 @@ class DDPGAgent(object):
         self.Q_target.load_state_dict(self.Q.state_dict())
         self.policy_target.load_state_dict(self.policy.state_dict())
 
+    def _update_target_nets(self):
+        for target_param, param in zip(self.Q_target.parameters(), self.Q.parameters()):
+            target_param.data.copy_(self._config["tau"] * param + (1 - self._config["tau"]) * target_param)
+        for target_param, param in zip(self.policy_target.parameters(), self.policy.parameters()):
+            target_param.data.copy_(self._config["tau"] * param + (1 - self._config["tau"]) * target_param)
+
     def act(self, observation, eps=None):
         if eps is None:
             eps = self._eps
@@ -147,7 +157,7 @@ class DDPGAgent(object):
         return action
 
     def store_transition(self, transition):
-        self.buffer.add_transition(transition)
+        self.buffer.push(*transition)
 
     def state(self):
         return (self.Q.state_dict(), self.policy.state_dict())
@@ -163,18 +173,20 @@ class DDPGAgent(object):
     def train(self, iter_fit=32):
         losses = []
         self.train_iter+=1
-        if self._config["use_target_net"] and self.train_iter % self._config["update_target_every"] == 0:
-            self._copy_nets()
+
         for i in range(iter_fit):
 
+            if self._config["use_target_net"]:
+                self._update_target_nets()
+            
             # sample from the replay buffer
-            data=self.buffer.sample(batch=self._config['batch_size'])
+            s, a, r, s_prime, done =self.buffer.sample(batch_size=self._config['batch_size'])
 
-            s = to_torch(np.stack(data[:,0])) # s_t
-            a = to_torch(np.stack(data[:,1])) # a_t
-            rew = to_torch(np.stack(data[:,2])[:,None]) # rew  (batchsize,1)
-            s_prime = to_torch(np.stack(data[:,3])) # s_t+1
-            done = to_torch(np.stack(data[:,4])[:,None]) # done signal  (batchsize,1)
+            s = to_torch(s) # batch_size x obs_dim
+            a = to_torch(a) # batch_size x action_dim
+            r = to_torch(r) # batch_size x 1
+            s_prime = to_torch(s_prime) # batch_size x obs_dim
+            done = to_torch(done) # batch_size x 1
 
             if self._config["use_target_net"]:
                 target_action = self.policy_target.forward(s_prime)
@@ -183,7 +195,7 @@ class DDPGAgent(object):
                 q_prime = self.Q.Q_value(s_prime, self.policy.forward(s_prime))
             # target
             gamma=self._config['discount']
-            td_target = rew + gamma * (1.0-done) * q_prime
+            td_target = r + gamma * (1.0-done) * q_prime
 
             # optimize the Q objective
             fit_loss = self.Q.fit(s, a, td_target)

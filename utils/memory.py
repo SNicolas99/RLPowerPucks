@@ -1,76 +1,17 @@
-import torch
 import numpy as np
 import random
 
-
-
 class ReplayBuffer:
-    """
-    Class for a replay buffer. Supports storing transitions and sampling batches from the buffer.
-    """
-    def __init__(self, buffer_size=1000000):
-        """
-        Initialize the replay buffer.
-
-        :param buffer_size: The maximum size of the buffer.
-        """
+    def __init__(self, buffer_size, prioritized_replay=False):
         self.buffer_size = buffer_size
-        self.buffer = []
-
-    def store_transition(self, transition):
-        """
-        Store a transition in the replay buffer.
-
-        :param transition: The transition to store.
-        """
-        self.buffer.append(transition)
-        if len(self.buffer) > self.buffer_size:
-            self.buffer.pop(0)
-
-    def sample_from_buffer(self, batch_size) -> list[dict[str, np.ndarray]]:
-        """
-        Sample a batch of transitions from the replay buffer.
-
-        :param batch_size: The size of the batch to sample.
-        :return: A batch of transitions.
-        """
-        indices = random.sample(range(len(self.buffer)), batch_size)
-        return [self.buffer[i] for i in indices]
-
-    def __len__(self) -> int:
-        """
-        Replaces the len-operator for the buffer. Returns the length of the buffer.
-
-        :return: The number of transitions in the buffer.
-        """
-        return len(self.buffer)
-
-    def save(self, path: str):
-        """
-        Save the replay buffer to a file.
-
-        :param path: The path to save the buffer to.
-        """
-        np.save(path, self.buffer)
-
-    def load(self, path: str):
-        """
-        Load a replay buffer from a file.
-
-        :param path: The path to load the buffer from.
-        """
-        self.buffer = np.load(path, allow_pickle=True).tolist()
-
-class ReplayBufferPrioritized:
-    def __init__(self, buffer_size, prioritized_replay=True):
-        self.buffer_size = buffer_size
-        self.init_weight = 1e8 # infinitely large weight for new transitions
+        self.init_weight = 1e8
         self.current_index = 0
         self.size = 0
         self.prioritized_replay = prioritized_replay
         self.last_batch_inds = None
 
         self.buffer = np.full(buffer_size, None, dtype=object)
+        self.weights = None
         if self.prioritized_replay:
             self.weights = np.full(buffer_size, self.init_weight, dtype=np.float32)
 
@@ -99,15 +40,15 @@ class ReplayBufferPrioritized:
         if self.prioritized_replay:
             self.last_batch_inds = inds
 
-        # hier vllt das torch zeug rausnehmen und in der agent klasse zu torch tensors casten?
-        # get state, action, reward, next_state, done from batch as torch tensors
-        state = torch.tensor(np.array([elem["state"] for elem in batch]), dtype=torch.float32)
-        action = torch.tensor(np.array([elem["action"] for elem in batch]), dtype=torch.float32)
-        reward = torch.tensor(np.array([elem["reward"] for elem in batch]), dtype=torch.float32)
-        next_state = torch.tensor(
-            np.array([elem["next_state"] for elem in batch]), dtype=torch.float32
-        )
-        done = torch.tensor(np.array([elem["done"] for elem in batch], dtype=np.float32))
+        # get state, action, reward, next_state, done from batch as np arrays
+        state = np.array([elem["state"] for elem in batch], dtype=np.float32)
+        action = np.array([elem["action"] for elem in batch], dtype=np.float32)
+        reward = np.array([elem["reward"] for elem in batch], dtype=np.float32)
+        next_state = np.array([elem["next_state"] for elem in batch], dtype=np.float32)
+        done = np.array([elem["done"] for elem in batch], dtype=np.float32)
+
+        reward = reward.reshape(-1, 1)
+        done = done.reshape(-1, 1)
 
         return state, action, reward, next_state, done
 
@@ -136,7 +77,6 @@ class ReplayBufferPrioritized:
             if np.product(shape) > self.size:
                 inds = np.random.choice(self.size, size=shape, p=probs, replace=True)
             else:
-                # mit replace vllt sogar generell besser?
                 inds = np.random.choice(self.size, size=shape, p=probs, replace=False)
             return inds
         else:
@@ -145,3 +85,24 @@ class ReplayBufferPrioritized:
                 shape = (shape,)
             return (np.random.rand(*shape) * self.size).astype(int)
 
+    def save(self, path):
+        state = {
+            "buffer": self.buffer,
+            "buffer_size": self.buffer_size,
+            "weights": self.weights,
+            "current_index": self.current_index,
+            "size": self.size,
+            "prioritized_replay": self.prioritized_replay,
+            "last_batch_inds": self.last_batch_inds,
+        }
+        np.save(state, path)
+    
+    def load(self, path):
+        state = np.load(path)
+        self.buffer = state["buffer"]
+        self.buffer_size = state["buffer_size"]
+        self.weights = state["weights"]
+        self.current_index = state["current_index"]
+        self.size = state["size"]
+        self.prioritized_replay = state["prioritized_replay"]
+        self.last_batch_inds = state["last_batch_inds"]
