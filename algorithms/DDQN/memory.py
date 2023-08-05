@@ -31,28 +31,23 @@ class Memory():
     # TODO maybe another function to update the priorities
 
 class PER_Memory:
-    def __init__(self, max_size=100000, alpha=0.6, beta=0.4, epsilon=1e-6):
-        self.transitions = np.empty(max_size, dtype=object)
+    def __init__(self, max_size=100000, alpha=0.6, beta=0.4):
+        self.transitions = np.asarray([])
         self.priorities = np.zeros(max_size)
         self.size = 0
         self.current_idx = 0
         self.max_size = max_size
         self.alpha = alpha
         self.beta = beta
-        self.epsilon = epsilon
 
     def add_transition(self, transitions_new, priority=None):
-        if self.size < self.max_size:
-            self.transitions[self.current_idx] = np.asarray(transitions_new, dtype=object)
-            if priority is None:
-                priority = self.max_priority()
-            self.update_priority(self.current_idx, priority)
-            self.size += 1
-        else:
-            if priority is None:
-                priority = self.max_priority()
-            self.transitions[self.current_idx] = np.asarray(transitions_new, dtype=object)
-            self.update_priority(self.current_idx, priority)
+        if self.size == 0:
+            blank_buffer = [np.asarray(transitions_new, dtype=object)] * self.max_size
+            self.transitions = np.asarray(blank_buffer)
+        if priority is None:
+            priority = self.max_priority()
+        self.update_priority(self.current_idx, priority)
+        self.size += 1
         self.current_idx = (self.current_idx + 1) % self.max_size
 
     def max_priority(self):
@@ -67,16 +62,17 @@ class PER_Memory:
 
         # Calculate probabilities for sampling based on priorities
         priority_probs = self.priorities[:self.size] ** self.alpha
+        # Normalization
         priority_probs /= priority_probs.sum()
 
         # Sample indices based on probabilities
-        self.inds = np.random.choice(self.size, size=batch, replace=False, p=priority_probs)
+        self.inds = np.random.choice(self.size, size=batch, p=priority_probs)
 
         # Calculate importance sampling weights
         weights = (self.size * priority_probs[self.inds]) ** (-self.beta)
-        weights /= weights.max() + self.epsilon
+        normalized_weights = weights / weights.max()
 
-        return self.transitions[self.inds]
+        return self.transitions[self.inds,:], normalized_weights, self.inds
 
     def update_priorities(self, indices, priorities):
         for idx, priority in zip(indices, priorities):

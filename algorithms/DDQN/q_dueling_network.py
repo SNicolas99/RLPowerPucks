@@ -74,18 +74,17 @@ class QFunction(DuelingDeepQNetwork):
                                   lr=self.lr)
         self.device = device
 
-    def fit(self, observations, actions, targets):
-        self.train() # put model in training mode
-        self.optimizer.zero_grad()
+    def fit(self, observations, actions, targets, weights):
         # Forward pass
-        pred = self.Q_value(observations, actions)
-        # Compute Loss
-        loss = self.loss(pred, T.from_numpy(targets).to(self.device).float())
-        ## TODO think about weighting the loss
+        prediction = self.Q_value(observations=observations, actions=actions)
+        # Compute Loss and weight it
+        weighted_loss = self.loss(prediction, T.from_numpy(targets).to(self.device).float()) * (T.from_numpy(weights).to(self.device).float())
+        self.optimizer.zero_grad()
         # Backward pass
-        loss.backward()
+        mean_wl = weighted_loss.mean()
+        mean_wl.backward()
         self.optimizer.step()
-        return loss.item()
+        return mean_wl.item(), prediction
 
 
     def Q_value(self, observations, actions):

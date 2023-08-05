@@ -68,7 +68,8 @@ class Trainer:
         ]
         # TODO Logger Methode, die nach dem initialisieren erstmal alle wichtigen Variablen loggt
 
-        player2 = h_env.BasicOpponent()
+        print("Opponent weak: " + str(self.config['weak_opponent']))
+        player2 = h_env.BasicOpponent(weak=self.config['weak_opponent'])
 
         start_time = time.time()
         # run through every episode

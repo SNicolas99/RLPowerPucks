@@ -13,9 +13,12 @@ arg_parser = ArgumentParser()
 arg_parser.add_argument('-e', '--epsilon', type=float, default=1)
 arg_parser.add_argument('--e_min', type=float, default=0.1)
 arg_parser.add_argument('--e_decay', type=float, default=0.0005)
+arg_parser.add_argument('--weak_opponent', type=bool, default=False)
+
+arg_parser.add_argument('--play_own_agent', action='store_true')
 
 ## TODO find out whether 16,32, 64 is better for batch size
-arg_parser.add_argument('--batch_size', type=int, default=16)
+arg_parser.add_argument('--batch_size', type=int, default=32)
 arg_parser.add_argument('--discount', type=float, default=0.98)
 arg_parser.add_argument('--gradient_update_frequency', type=int, default= 1000)
 arg_parser.add_argument('--step_max', type=int, default=250)
@@ -28,8 +31,8 @@ arg_parser.add_argument('--weight_path', type=str, default="")
 arg_parser.add_argument('--save_weights', type=bool, default=False)
 arg_parser.add_argument('--use_existing_weights', type=bool, default=False)
 ## TODO play with buffer_size and experience_replay_frequency
-arg_parser.add_argument('--buffer_size', type=int, default=100000)
-arg_parser.add_argument('--experience_replay_frequency', type=int, default=10)
+arg_parser.add_argument('--buffer_size', type=int, default=1000000)
+arg_parser.add_argument('--experience_replay_frequency', type=int, default=5)
 arg_parser.add_argument('--use_target_net', default=True)
 # Arguments for Prioritized Experience Replay
 arg_parser.add_argument('--PER', default=False)
@@ -51,7 +54,7 @@ if __name__ == '__main__':
         mode = env.HockeyEnv_BasicOpponent.NORMAL
     elif parsed_args.training_mode == 'shooting':
         mode = env.HockeyEnv_BasicOpponent.TRAIN_SHOOTING
-    elif parsed_args.training_mode == 'defense':
+    else:
         mode = env.HockeyEnv_BasicOpponent.TRAIN_DEFENSE
 
     # Create Log Directory and pass it to the Logger

@@ -19,9 +19,10 @@ class DQNAgent():
 
         self.config = config
         self.e = self.config['epsilon']
+        self.PER = self.config['PER']
 
-        if config['PER']:
-            self.buffer = PER_Memory(max_size=self.config["buffer_size"])
+        if self.PER:
+            self.buffer = PER_Memory(max_size=self.config["buffer_size"], beta=self.config['beta'], alpha=self.config['alpha'])
         else:
             self.buffer = Memory(max_size=self.config["buffer_size"])
 
@@ -70,10 +71,13 @@ class DQNAgent():
     def train(self):
 
         # Keep this as it is
-        data=self.buffer.sample(batch=self.config['batch_size'])
+        if self.PER:
+            data, weights, indices = self.buffer.sample(batch=self.config['batch_size'])
+        else:
+            data = self.buffer.sample(batch=self.config['batch_size'])
         s = np.stack(data[:,0]) # s_t
         a = np.stack(data[:,1]) # a_t
-        rew = np.stack(data[:,2])[:,None] # rew  (batchsize,1)
+        reward = np.stack(data[:,2])[:,None] # rew  (batchsize,1)
         s_prime = np.stack(data[:,3]) # s_t+1
         done = np.stack(data[:,4])[:,None] # done signal  (batchsize,1)
 
@@ -83,13 +87,17 @@ class DQNAgent():
             v_prime = self.Q.maxQ(s_prime)[:, None]
             # target
         gamma=self.config['discount']
-        td_target = rew + gamma * (1.0-done) * v_prime
+        td_target = reward + gamma * (1.0-done) * v_prime
+
+        if not self.PER:
+            weights = np.ones(td_target.shape)
 
             # optimize the lsq objective
-        start_time_loss = time.time()
-        fit_loss = self.Q.fit(s, a, td_target)
-        end_time_loss = time.time()
-        #print("total_fit_time: " + str(end_time_loss-start_time_loss))
+        fit_loss, pred = self.Q.fit(observations=s, actions=a, targets=td_target, weights=weights)
+
+        # Update the priorities of the transitions inside the buffer
+        if self.PER:
+            self.buffer.update_priority(idx=indices[:,None], priority=abs(td_target-pred.detach().numpy()))
 
         return fit_loss
 

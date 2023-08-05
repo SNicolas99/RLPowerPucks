@@ -45,7 +45,8 @@ class Logger:
             if lose_count == 0:
                 win_percentages.append(1)
             else:
-                win_percentages.append(win_count / lose_count)
+                win_percentages.append(win_count / (lose_count+win_count))
+
 
         # Filter win_percentages to keep only values at intervals of 100
         filtered_win_percentages = win_percentages[::20]
