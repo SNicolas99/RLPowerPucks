@@ -7,12 +7,14 @@ import optparse
 import pickle
 
 import sys
-sys.path.append('../../..') # TODO: adjust path
 
-from utils.memory import ReplayBuffer
+sys.path.append("../../..")  # TODO: adjust path
+
+from tools.memory import ReplayBuffer
 from feedforward import Feedforward, to_torch
 
 torch.set_num_threads(1)
+
 
 class UnsupportedSpace(Exception):
     """Exception raised when the Sensor or Action space are not compatible
@@ -20,26 +22,34 @@ class UnsupportedSpace(Exception):
     Attributes:
         message -- explanation of the error
     """
+
     def __init__(self, message="Unsupported Space"):
         self.message = message
         super().__init__(self.message)
 
+
 class QFunction(Feedforward):
-    def __init__(self, observation_dim, action_dim, hidden_sizes=[100,100],
-                 learning_rate = 0.0002):
-        super().__init__(input_size=observation_dim + action_dim, hidden_sizes=hidden_sizes,
-                         output_size=1)
-        self.optimizer=torch.optim.Adam(self.parameters(),
-                                        lr=learning_rate,
-                                        eps=0.000001)
+    def __init__(
+        self, observation_dim, action_dim, hidden_sizes=[100, 100], learning_rate=0.0002
+    ):
+        super().__init__(
+            input_size=observation_dim + action_dim,
+            hidden_sizes=hidden_sizes,
+            output_size=1,
+        )
+        self.optimizer = torch.optim.Adam(
+            self.parameters(), lr=learning_rate, eps=0.000001
+        )
         self.loss = nn.SmoothL1Loss()
 
-    def fit(self, observations, actions, targets): # all arguments should be torch tensors
-        self.train() # put model in training mode
+    def fit(
+        self, observations, actions, targets
+    ):  # all arguments should be torch tensors
+        self.train()  # put model in training mode
         self.optimizer.zero_grad()
         # Forward pass
 
-        pred = self.Q_value(observations,actions)
+        pred = self.Q_value(observations, actions)
         loss = self.loss(pred, targets)
 
         # Backward pass
@@ -48,9 +58,10 @@ class QFunction(Feedforward):
         return loss.item()
 
     def Q_value(self, observations, actions):
-        return self.forward(torch.hstack([observations,actions]))
+        return self.forward(torch.hstack([observations, actions]))
 
-class OUNoise():
+
+class OUNoise:
     def __init__(self, shape, theta: float = 0.05, dt: float = 1e-2):
         self._shape = shape
         self._theta = theta
@@ -61,7 +72,7 @@ class OUNoise():
     def __call__(self) -> np.ndarray:
         noise = (
             self.noise_prev
-            + self._theta * ( - self.noise_prev) * self._dt
+            + self._theta * (-self.noise_prev) * self._dt
             + np.sqrt(self._dt) * np.random.normal(size=self._shape)
         )
         self.noise_prev = noise
@@ -70,83 +81,105 @@ class OUNoise():
     def reset(self) -> None:
         self.noise_prev = np.zeros(self._shape)
 
+
 class TD3Agent(object):
     """
     Agent implementing Q-learning with NN function approximation.
     """
-    def __init__(self, observation_space, action_space, **userconfig):
 
+    def __init__(self, observation_space, action_space, **userconfig):
         if not isinstance(observation_space, spaces.box.Box):
-            raise UnsupportedSpace('Observation space {} incompatible ' \
-                                   'with {}. (Require: Box)'.format(observation_space, self))
+            raise UnsupportedSpace(
+                "Observation space {} incompatible "
+                "with {}. (Require: Box)".format(observation_space, self)
+            )
         if not isinstance(action_space, spaces.box.Box):
-            raise UnsupportedSpace('Action space {} incompatible with {}.' \
-                                   ' (Require Box)'.format(action_space, self))
+            raise UnsupportedSpace(
+                "Action space {} incompatible with {}."
+                " (Require Box)".format(action_space, self)
+            )
 
         self._observation_space = observation_space
-        self._obs_dim=self._observation_space.shape[0]
+        self._obs_dim = self._observation_space.shape[0]
         self._action_space = action_space
         self._action_n = action_space.shape[0]
         self._config = {
-            "eps": 0.1,            # Epsilon: noise strength to add to policy # 0.1
-            "discount": 0.995, # 0.95
-            "buffer_size": int(2e5), # 1e6
-            "batch_size": 128, #128
-            "learning_rate_actor": 0.00001, # 0.00001
+            "eps": 0.5,  # Epsilon: noise strength to add to policy # 0.1
+            "discount": 0.995,  # 0.95
+            "buffer_size": int(2e5),  # 1e6
+            "batch_size": 128,  # 128
+            "learning_rate_actor": 0.00001,  # 0.00001
             "learning_rate_critic": 0.0001,
-            "hidden_sizes_actor": [256,256],
-            "hidden_sizes_critic": [256,256,256],
-            "tau": 0.001, # 0.0025
-            "policy_target_update_interval": 2, # 2
-            "target_action_noise": 0.1, # 0.2
-            "target_action_noise_clip": 0.35, # 0.5
+            "hidden_sizes_actor": [256, 256],
+            "hidden_sizes_critic": [256, 256, 256],
+            "tau": 0.0002,  # 0.0002
+            "hard_update_frequency": np.inf,  # 50
+            "policy_target_update_interval": 2,  # 2
+            "target_action_noise": 0.2,  # 0.2
+            "target_action_noise_clip": 0.5,  # 0.5
+            "use_second_critic": True,
             "use_prioritized_replay": False,
         }
         self._config.update(userconfig)
-        self._eps = self._config['eps']
+        self._eps = self._config["eps"]
 
         self.action_noise = OUNoise((self._action_n))
 
-        self.buffer = ReplayBuffer(buffer_size=self._config["buffer_size"], prioritized_replay=self._config["use_prioritized_replay"])
+        self.buffer = ReplayBuffer(
+            buffer_size=self._config["buffer_size"],
+            prioritized_replay=self._config["use_prioritized_replay"],
+        )
 
         # Q Networks
-        self.Q = QFunction(observation_dim=self._obs_dim,
-                           action_dim=self._action_n,
-                           hidden_sizes= self._config["hidden_sizes_critic"],
-                           learning_rate = self._config["learning_rate_critic"])
-        
-        self.Q2 = QFunction(observation_dim=self._obs_dim,
-                           action_dim=self._action_n,
-                           hidden_sizes= self._config["hidden_sizes_critic"],
-                           learning_rate = self._config["learning_rate_critic"])
-        
-        # target Q Networks
-        self.Q_target = QFunction(observation_dim=self._obs_dim,
-                                  action_dim=self._action_n,
-                                  hidden_sizes= self._config["hidden_sizes_critic"],
-                                  learning_rate = 0)
-        
-        self.Q2_target = QFunction(observation_dim=self._obs_dim,
-                                  action_dim=self._action_n,
-                                  hidden_sizes= self._config["hidden_sizes_critic"],
-                                  learning_rate = 0)
+        self.Q = QFunction(
+            observation_dim=self._obs_dim,
+            action_dim=self._action_n,
+            hidden_sizes=self._config["hidden_sizes_critic"],
+            learning_rate=self._config["learning_rate_critic"],
+        )
 
-        self.policy = Feedforward(input_size=self._obs_dim,
-                                  hidden_sizes= self._config["hidden_sizes_actor"],
-                                  output_size=self._action_n,
-                                  activation_fun = torch.nn.ReLU(),
-                                  output_activation = torch.nn.Tanh(),
+        self.Q2 = QFunction(
+            observation_dim=self._obs_dim,
+            action_dim=self._action_n,
+            hidden_sizes=self._config["hidden_sizes_critic"],
+            learning_rate=self._config["learning_rate_critic"],
         )
-        self.policy_target = Feedforward(input_size=self._obs_dim,
-                                         hidden_sizes= self._config["hidden_sizes_actor"],
-                                         output_size=self._action_n,
-                                         activation_fun = torch.nn.ReLU(),
-                                         output_activation = torch.nn.Tanh(),
+
+        # target Q Networks
+        self.Q_target = QFunction(
+            observation_dim=self._obs_dim,
+            action_dim=self._action_n,
+            hidden_sizes=self._config["hidden_sizes_critic"],
+            learning_rate=0,
         )
-        self.optimizer=torch.optim.Adam(self.policy.parameters(),
-                                lr=self._config["learning_rate_actor"],
-                                eps=0.000001)
-        
+
+        self.Q2_target = QFunction(
+            observation_dim=self._obs_dim,
+            action_dim=self._action_n,
+            hidden_sizes=self._config["hidden_sizes_critic"],
+            learning_rate=0,
+        )
+
+        self.policy = Feedforward(
+            input_size=self._obs_dim,
+            hidden_sizes=self._config["hidden_sizes_actor"],
+            output_size=self._action_n,
+            activation_fun=torch.nn.ReLU(),
+            output_activation=torch.nn.Tanh(),
+        )
+        self.policy_target = Feedforward(
+            input_size=self._obs_dim,
+            hidden_sizes=self._config["hidden_sizes_actor"],
+            output_size=self._action_n,
+            activation_fun=torch.nn.ReLU(),
+            output_activation=torch.nn.Tanh(),
+        )
+        self.optimizer = torch.optim.Adam(
+            self.policy.parameters(),
+            lr=self._config["learning_rate_actor"],
+            eps=0.000001,
+        )
+
         self._copy_nets()
 
         # disable gradients for target networks
@@ -167,20 +200,34 @@ class TD3Agent(object):
     def _update_target_nets(self):
         # update Q
         for target_param, param in zip(self.Q_target.parameters(), self.Q.parameters()):
-            target_param.data.copy_(self._config["tau"] * param + (1 - self._config["tau"]) * target_param)
+            target_param.data.copy_(
+                self._config["tau"] * param + (1 - self._config["tau"]) * target_param
+            )
         # update Q2
-        for target_param, param in zip(self.Q2_target.parameters(), self.Q2.parameters()):
-            target_param.data.copy_(self._config["tau"] * param + (1 - self._config["tau"]) * target_param)
+        for target_param, param in zip(
+            self.Q2_target.parameters(), self.Q2.parameters()
+        ):
+            target_param.data.copy_(
+                self._config["tau"] * param + (1 - self._config["tau"]) * target_param
+            )
         # update policy
-        for target_param, param in zip(self.policy_target.parameters(), self.policy.parameters()):
-            target_param.data.copy_(self._config["tau"] * param + (1 - self._config["tau"]) * target_param)
+        for target_param, param in zip(
+            self.policy_target.parameters(), self.policy.parameters()
+        ):
+            target_param.data.copy_(
+                self._config["tau"] * param + (1 - self._config["tau"]) * target_param
+            )
 
     def act(self, observation, eps=None):
         if eps is None:
             eps = self._eps
 
-        action = self.policy.predict(to_torch(observation)) + eps*self.action_noise()  # action in -1 to 1 (+ noise)
-        action = self._action_space.low + (action + 1.0) / 2.0 * (self._action_space.high - self._action_space.low)
+        action = (
+            self.policy.predict(to_torch(observation)) + eps * self.action_noise()
+        )  # action in -1 to 1 (+ noise)
+        action = self._action_space.low + (action + 1.0) / 2.0 * (
+            self._action_space.high - self._action_space.low
+        )
         return action
 
     def store_transition(self, transition):
@@ -199,42 +246,61 @@ class TD3Agent(object):
 
     def get_target_action_noise(self):
         noise = self.action_noise() * self._config["target_action_noise"]
-        return np.clip(noise, -self._config["target_action_noise_clip"], self._config["target_action_noise_clip"])
+        return np.clip(
+            noise,
+            -self._config["target_action_noise_clip"],
+            self._config["target_action_noise_clip"],
+        )
 
     def train(self, iter_fit=32):
         fit_losses = []
         actor_losses = []
-        self.train_iter+=1
+        self.train_iter += 1
+
+        if self.train_iter % self._config["hard_update_frequency"] == 0:
+            self._copy_nets()
 
         for i in range(iter_fit):
-            
             # sample from the replay buffer
-            s, a, r, s_prime, done =self.buffer.sample(batch_size=self._config['batch_size'])
+            s, a, r, s_prime, done = self.buffer.sample(
+                batch_size=self._config["batch_size"]
+            )
 
-            s = to_torch(s) # batch_size x obs_dim
-            a = to_torch(a) # batch_size x action_dim
-            r = to_torch(r) # batch_size x 1
-            s_prime = to_torch(s_prime) # batch_size x obs_dim
-            done = to_torch(done) # batch_size x 1
+            s = to_torch(s)  # batch_size x obs_dim
+            a = to_torch(a)  # batch_size x action_dim
+            r = to_torch(r)  # batch_size x 1
+            s_prime = to_torch(s_prime)  # batch_size x obs_dim
+            done = to_torch(done)  # batch_size x 1
 
             target_action = self.policy_target.forward(s_prime)
             target_action_noise = self.get_target_action_noise()
-            target_action = to_torch(np.clip(target_action + target_action_noise, self._action_space.low, self._action_space.high))
+            target_action = to_torch(
+                np.clip(
+                    target_action + target_action_noise,
+                    self._action_space.low,
+                    self._action_space.high,
+                )
+            )
 
             q_prime = self.Q_target.Q_value(s_prime, target_action)
-            q_prime2 = self.Q2_target.Q_value(s_prime, target_action)
-            q_prime = torch.minimum(q_prime, q_prime2)
+            if self._config["use_second_critic"]:
+                q_prime2 = self.Q2_target.Q_value(s_prime, target_action)
+                q_prime = torch.minimum(q_prime, q_prime2)
 
             # target
-            gamma=self._config['discount']
-            td_target = r + gamma * (1.0-done) * q_prime
+            gamma = self._config["discount"]
+            td_target = r + gamma * (1.0 - done) * q_prime
 
             # optimize the Q objective
             fit_loss = self.Q.fit(s, a, td_target)
             fit_losses.append(fit_loss)
 
-            if self.train_iter % self._config["policy_target_update_interval"] == 0:
+            # optimize the Q2 objective
+            if self._config["use_second_critic"]:
+                fit_loss2 = self.Q2.fit(s, a, td_target)
+                fit_losses.append(fit_loss2)
 
+            if self.train_iter % self._config["policy_target_update_interval"] == 0:
                 self._update_target_nets()
 
                 # optimize actor objective
@@ -251,53 +317,99 @@ class TD3Agent(object):
 
 def main():
     optParser = optparse.OptionParser()
-    optParser.add_option('-e', '--env',action='store', type='string',
-                         dest='env_name',default="Pendulum-v1",
-                         help='Environment (default %default)')
-    optParser.add_option('-n', '--eps',action='store',  type='float',
-                         dest='eps',default=0.1,
-                         help='Policy noise (default %default)')
-    optParser.add_option('-t', '--train',action='store',  type='int',
-                         dest='train',default=32,
-                         help='number of training batches per episode (default %default)')
-    optParser.add_option('-l', '--lr',action='store',  type='float',
-                         dest='lr',default=0.0001,
-                         help='learning rate for actor/policy (default %default)')
-    optParser.add_option('-m', '--maxepisodes',action='store',  type='float',
-                         dest='max_episodes',default=2000,
-                         help='number of episodes (default %default)')
-    optParser.add_option('-u', '--update',action='store',  type='float',
-                         dest='update_every',default=100,
-                         help='number of episodes between target network updates (default %default)')
-    optParser.add_option('-s', '--seed',action='store',  type='int',
-                         dest='seed',default=None,
-                         help='random seed (default %default)')
+    optParser.add_option(
+        "-e",
+        "--env",
+        action="store",
+        type="string",
+        dest="env_name",
+        default="Pendulum-v1",
+        help="Environment (default %default)",
+    )
+    optParser.add_option(
+        "-n",
+        "--eps",
+        action="store",
+        type="float",
+        dest="eps",
+        default=0.1,
+        help="Policy noise (default %default)",
+    )
+    optParser.add_option(
+        "-t",
+        "--train",
+        action="store",
+        type="int",
+        dest="train",
+        default=32,
+        help="number of training batches per episode (default %default)",
+    )
+    optParser.add_option(
+        "-l",
+        "--lr",
+        action="store",
+        type="float",
+        dest="lr",
+        default=0.0001,
+        help="learning rate for actor/policy (default %default)",
+    )
+    optParser.add_option(
+        "-m",
+        "--maxepisodes",
+        action="store",
+        type="float",
+        dest="max_episodes",
+        default=2000,
+        help="number of episodes (default %default)",
+    )
+    optParser.add_option(
+        "-u",
+        "--update",
+        action="store",
+        type="float",
+        dest="update_every",
+        default=100,
+        help="number of episodes between target network updates (default %default)",
+    )
+    optParser.add_option(
+        "-s",
+        "--seed",
+        action="store",
+        type="int",
+        dest="seed",
+        default=None,
+        help="random seed (default %default)",
+    )
     opts, args = optParser.parse_args()
     ############## Hyperparameters ##############
     env_name = opts.env_name
     # creating environment
     if env_name == "LunarLander-v2":
-        env = gym.make(env_name, continuous = True)
+        env = gym.make(env_name, continuous=True)
     else:
         env = gym.make(env_name)
     render = False
-    log_interval = 20           # print avg reward in the interval
-    max_episodes = opts.max_episodes # max training episodes
-    max_timesteps = 2000         # max timesteps in one episode
+    log_interval = 20  # print avg reward in the interval
+    max_episodes = opts.max_episodes  # max training episodes
+    max_timesteps = 2000  # max timesteps in one episode
 
-    train_iter = opts.train      # update networks for given batched after every episode
-    eps = opts.eps               # noise of DDPG policy
-    lr  = opts.lr                # learning rate of DDPG policy
+    train_iter = opts.train  # update networks for given batched after every episode
+    eps = opts.eps  # noise of DDPG policy
+    lr = opts.lr  # learning rate of DDPG policy
     random_seed = opts.seed
     #############################################
-
 
     if random_seed is not None:
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
-    agent = TD3Agent(env.observation_space, env.action_space, eps = eps, learning_rate_actor = lr,
-                     update_target_every = opts.update_every)
+    agent = TD3Agent(
+        env.observation_space,
+        env.action_space,
+        eps=eps,
+        learning_rate_actor=lr,
+        update_target_every=opts.update_every,
+    )
 
     # logging variables
     rewards = []
@@ -306,24 +418,38 @@ def main():
     timestep = 0
 
     def save_statistics():
-        with open(f"./results/DDPG_{env_name}-eps{eps}-t{train_iter}-l{lr}-s{random_seed}-stat.pkl", 'wb') as f:
-            pickle.dump({"rewards" : rewards, "lengths": lengths, "eps": eps, "train": train_iter,
-                         "lr": lr, "update_every": opts.update_every, "losses": losses}, f)
+        with open(
+            f"./results/DDPG_{env_name}-eps{eps}-t{train_iter}-l{lr}-s{random_seed}-stat.pkl",
+            "wb",
+        ) as f:
+            pickle.dump(
+                {
+                    "rewards": rewards,
+                    "lengths": lengths,
+                    "eps": eps,
+                    "train": train_iter,
+                    "lr": lr,
+                    "update_every": opts.update_every,
+                    "losses": losses,
+                },
+                f,
+            )
 
     # training loop
-    for i_episode in range(1, max_episodes+1):
+    for i_episode in range(1, max_episodes + 1):
         ob, _info = env.reset()
         agent.reset()
-        total_reward=0
+        total_reward = 0
         for t in range(max_timesteps):
             timestep += 1
             done = False
             a = agent.act(ob)
             (ob_new, reward, done, trunc, _info) = env.step(a)
-            total_reward+= reward
+            total_reward += reward
             agent.store_transition((ob, a, reward, ob_new, done))
-            ob=ob_new
-            if done or trunc: break
+            ob = ob_new
+            if done or trunc:
+                break
 
         losses.extend(agent.train(train_iter))
 
@@ -333,7 +459,10 @@ def main():
         # save every 500 episodes
         if i_episode % 500 == 0:
             print("########## Saving a checkpoint... ##########")
-            torch.save(agent.state(), f'./results/DDPG_{env_name}_{i_episode}-eps{eps}-t{train_iter}-l{lr}-s{random_seed}.pth')
+            torch.save(
+                agent.state(),
+                f"./results/DDPG_{env_name}_{i_episode}-eps{eps}-t{train_iter}-l{lr}-s{random_seed}.pth",
+            )
             save_statistics()
 
         # logging
@@ -341,8 +470,13 @@ def main():
             avg_reward = np.mean(rewards[-log_interval:])
             avg_length = int(np.mean(lengths[-log_interval:]))
 
-            print('Episode {} \t avg length: {} \t reward: {}'.format(i_episode, avg_length, avg_reward))
+            print(
+                "Episode {} \t avg length: {} \t reward: {}".format(
+                    i_episode, avg_length, avg_reward
+                )
+            )
     save_statistics()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
