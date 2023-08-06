@@ -51,11 +51,15 @@ class Trainer:
                 ep_duration = (perf_counter() - start) / ep_per_step
                 
                 start = perf_counter()
-                losses_train = np.mean(agent.train(), axis=0)
-                train_duration = perf_counter() - start
 
-                critic_loss = losses_train[0]
-                actor_loss = losses_train[1]
+                fit_losses, actor_losses = agent.train()
+                critic_loss = np.mean(fit_losses, axis=0)
+                if len(actor_losses) > 0:
+                    actor_loss = np.mean(actor_losses, axis=0)
+                else:
+                    actor_loss = []
+
+                train_duration = perf_counter() - start
 
                 self.logger.log(steps, rewards, actor_loss, critic_loss, ep_duration, train_duration)
 

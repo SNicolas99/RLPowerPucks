@@ -171,7 +171,8 @@ class DDPGAgent(object):
         self.action_noise.reset()
 
     def train(self, iter_fit=32):
-        losses = []
+        fit_losses = []
+        actor_losses = []
         self.train_iter+=1
 
         for i in range(iter_fit):
@@ -199,6 +200,7 @@ class DDPGAgent(object):
 
             # optimize the Q objective
             fit_loss = self.Q.fit(s, a, td_target)
+            fit_losses.append(fit_loss)
 
             # optimize actor objective
             self.optimizer.zero_grad()
@@ -207,9 +209,9 @@ class DDPGAgent(object):
             actor_loss.backward()
             self.optimizer.step()
 
-            losses.append((fit_loss, actor_loss.item()))
+            actor_losses.append(actor_loss.item())
 
-        return losses
+        return fit_losses, actor_losses
 
 
 def main():

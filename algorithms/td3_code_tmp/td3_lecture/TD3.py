@@ -70,7 +70,7 @@ class OUNoise():
     def reset(self) -> None:
         self.noise_prev = np.zeros(self._shape)
 
-class DDPGAgent(object):
+class TD3Agent(object):
     """
     Agent implementing Q-learning with NN function approximation.
     """
@@ -96,8 +96,10 @@ class DDPGAgent(object):
             "learning_rate_critic": 0.0001,
             "hidden_sizes_actor": [256,256],
             "hidden_sizes_critic": [256,256,256],
-            "tau": 0.0025, # 0.0025
-            "use_target_net": True,
+            "tau": 0.001, # 0.0025
+            "policy_target_update_interval": 2, # 2
+            "target_action_noise": 0.1, # 0.2
+            "target_action_noise_clip": 0.35, # 0.5
             "use_prioritized_replay": False,
         }
         self._config.update(userconfig)
@@ -107,13 +109,24 @@ class DDPGAgent(object):
 
         self.buffer = ReplayBuffer(buffer_size=self._config["buffer_size"], prioritized_replay=self._config["use_prioritized_replay"])
 
-        # Q Network
+        # Q Networks
         self.Q = QFunction(observation_dim=self._obs_dim,
                            action_dim=self._action_n,
                            hidden_sizes= self._config["hidden_sizes_critic"],
                            learning_rate = self._config["learning_rate_critic"])
-        # target Q Network
+        
+        self.Q2 = QFunction(observation_dim=self._obs_dim,
+                           action_dim=self._action_n,
+                           hidden_sizes= self._config["hidden_sizes_critic"],
+                           learning_rate = self._config["learning_rate_critic"])
+        
+        # target Q Networks
         self.Q_target = QFunction(observation_dim=self._obs_dim,
+                                  action_dim=self._action_n,
+                                  hidden_sizes= self._config["hidden_sizes_critic"],
+                                  learning_rate = 0)
+        
+        self.Q2_target = QFunction(observation_dim=self._obs_dim,
                                   action_dim=self._action_n,
                                   hidden_sizes= self._config["hidden_sizes_critic"],
                                   learning_rate = 0)
@@ -133,25 +146,39 @@ class DDPGAgent(object):
         self.optimizer=torch.optim.Adam(self.policy.parameters(),
                                 lr=self._config["learning_rate_actor"],
                                 eps=0.000001)
-
+        
         self._copy_nets()
+
+        # disable gradients for target networks
+        for p in self.Q_target.parameters():
+            p.requires_grad = False
+        for p in self.Q2_target.parameters():
+            p.requires_grad = False
+        for p in self.policy_target.parameters():
+            p.requires_grad = False
 
         self.train_iter = 0
 
     def _copy_nets(self):
         self.Q_target.load_state_dict(self.Q.state_dict())
+        self.Q2_target.load_state_dict(self.Q2.state_dict())
         self.policy_target.load_state_dict(self.policy.state_dict())
 
     def _update_target_nets(self):
+        # update Q
         for target_param, param in zip(self.Q_target.parameters(), self.Q.parameters()):
             target_param.data.copy_(self._config["tau"] * param + (1 - self._config["tau"]) * target_param)
+        # update Q2
+        for target_param, param in zip(self.Q2_target.parameters(), self.Q2.parameters()):
+            target_param.data.copy_(self._config["tau"] * param + (1 - self._config["tau"]) * target_param)
+        # update policy
         for target_param, param in zip(self.policy_target.parameters(), self.policy.parameters()):
             target_param.data.copy_(self._config["tau"] * param + (1 - self._config["tau"]) * target_param)
 
     def act(self, observation, eps=None):
         if eps is None:
             eps = self._eps
-        #
+
         action = self.policy.predict(to_torch(observation)) + eps*self.action_noise()  # action in -1 to 1 (+ noise)
         action = self._action_space.low + (action + 1.0) / 2.0 * (self._action_space.high - self._action_space.low)
         return action
@@ -170,14 +197,16 @@ class DDPGAgent(object):
     def reset(self):
         self.action_noise.reset()
 
+    def get_target_action_noise(self):
+        noise = self.action_noise() * self._config["target_action_noise"]
+        return np.clip(noise, -self._config["target_action_noise_clip"], self._config["target_action_noise_clip"])
+
     def train(self, iter_fit=32):
-        losses = []
+        fit_losses = []
+        actor_losses = []
         self.train_iter+=1
 
         for i in range(iter_fit):
-
-            if self._config["use_target_net"]:
-                self._update_target_nets()
             
             # sample from the replay buffer
             s, a, r, s_prime, done =self.buffer.sample(batch_size=self._config['batch_size'])
@@ -188,28 +217,36 @@ class DDPGAgent(object):
             s_prime = to_torch(s_prime) # batch_size x obs_dim
             done = to_torch(done) # batch_size x 1
 
-            if self._config["use_target_net"]:
-                target_action = self.policy_target.forward(s_prime)
-                q_prime = self.Q_target.Q_value(s_prime, target_action)
-            else:
-                q_prime = self.Q.Q_value(s_prime, self.policy.forward(s_prime))
+            target_action = self.policy_target.forward(s_prime)
+            target_action_noise = self.get_target_action_noise()
+            target_action = to_torch(np.clip(target_action + target_action_noise, self._action_space.low, self._action_space.high))
+
+            q_prime = self.Q_target.Q_value(s_prime, target_action)
+            q_prime2 = self.Q2_target.Q_value(s_prime, target_action)
+            q_prime = torch.minimum(q_prime, q_prime2)
+
             # target
             gamma=self._config['discount']
             td_target = r + gamma * (1.0-done) * q_prime
 
             # optimize the Q objective
             fit_loss = self.Q.fit(s, a, td_target)
+            fit_losses.append(fit_loss)
 
-            # optimize actor objective
-            self.optimizer.zero_grad()
-            q = self.Q.Q_value(s, self.policy.forward(s))
-            actor_loss = -torch.mean(q)
-            actor_loss.backward()
-            self.optimizer.step()
+            if self.train_iter % self._config["policy_target_update_interval"] == 0:
 
-            losses.append((fit_loss, actor_loss.item()))
+                self._update_target_nets()
 
-        return losses
+                # optimize actor objective
+                self.optimizer.zero_grad()
+                q = self.Q.Q_value(s, self.policy.forward(s))
+                actor_loss = -torch.mean(q)
+                actor_loss.backward()
+                self.optimizer.step()
+
+                actor_losses.append(actor_loss.item())
+
+        return fit_losses, actor_losses
 
 
 def main():
@@ -259,7 +296,7 @@ def main():
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
-    agent = DDPGAgent(env.observation_space, env.action_space, eps = eps, learning_rate_actor = lr,
+    agent = TD3Agent(env.observation_space, env.action_space, eps = eps, learning_rate_actor = lr,
                      update_target_every = opts.update_every)
 
     # logging variables
