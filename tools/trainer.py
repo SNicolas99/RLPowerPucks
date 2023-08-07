@@ -10,11 +10,12 @@ class Trainer:
         self.current_step = 0
 
     @staticmethod
-    def run(env, agent, n_episodes=100, noise=0, store_transitions=True, render=False):
+    def run(env, agent, n_episodes=100, noise=0, store_transitions=True, render=False, hockey=False):
         rewards = []
         observations = []
         actions = []
         steps = []
+        hockey_results = []
         for ep in range(1, n_episodes + 1):
             ep_reward = 0
             state, _info = env.reset()
@@ -41,11 +42,16 @@ class Trainer:
             steps.append(t + 1)
             rewards.append(ep_reward)
             ep_reward = 0
+
+            if hockey:
+                result = _info['winner']
+                hockey_results.append(result)
+
         observations = np.asarray(observations)
         actions = np.asarray(actions)
         rewards = np.asarray(rewards)
         steps = np.asarray(steps, dtype=np.float32)
-        return steps, rewards, observations, actions
+        return steps, rewards, observations, actions, hockey_results
 
     def train(
         self,
@@ -57,6 +63,8 @@ class Trainer:
         n_test_episodes=20,
         noise=0.2,
     ):
+        hockey = hasattr(env, 'ishockey')
+
         n_steps = n_episodes // train_every
         ep_per_step = train_every
         self.logger = Logger(n_steps=n_steps, print_every=test_every)
@@ -66,7 +74,7 @@ class Trainer:
         try:
             for i in range(self.current_step, n_steps):
                 start = perf_counter()
-                steps, rewards, observations, actions = Trainer.run(
+                steps, rewards, observations, actions, results = Trainer.run(
                     env, agent, n_episodes=ep_per_step, noise=noise
                 )
                 ep_duration = (perf_counter() - start) / ep_per_step
@@ -92,14 +100,19 @@ class Trainer:
                         test_rewards,
                         test_observations,
                         test_actions,
+                        test_results,
                     ) = self.run(
                         env,
                         agent,
                         n_episodes=n_test_episodes,
                         noise=0.0,
                         store_transitions=False,
+                        hockey=hockey,
                     )
                     self.logger.log_test(test_rewards)
+                    winrate = (test_results==1).mean()
+                    drawrate = (test_results==0).mean()
+                    self.logger.log_hockey(winrate, drawrate)
                     self.logger.print(i)
         except KeyboardInterrupt:
             print("Interrupted")

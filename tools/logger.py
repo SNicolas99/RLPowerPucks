@@ -8,6 +8,11 @@ def is_iterable(itm):
         return True
     except TypeError:
         return False
+    
+def moving_average(a, n=3):
+    ret = np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
 
 class Logger:
 
@@ -21,7 +26,13 @@ class Logger:
         self.critic_losses = []
         self.ep_durations = []
         self.train_durations = []
+
         self.test_rewards = []
+        self.winrate = []
+        self.drawrate = []
+        self.lossrate = []
+
+        self.hockey = False
 
     def log(self, steps, ep_rewards, actor_losses, critic_losses, ep_durations, train_durations):
         items = [steps, ep_rewards, actor_losses, critic_losses, ep_durations, train_durations]
@@ -36,13 +47,27 @@ class Logger:
     def log_test(self, test_reward_array):
         self.test_rewards.append(np.mean(test_reward_array, axis=0))
 
+    def log_hockey(self, winrate, drawrate):
+        self.hockey = True
+        self.winrate.append(winrate)
+        self.drawrate.append(drawrate)
+        lossrate = 1-np.mean(self.winrate[-100:])-np.mean(self.drawrate[-100:])
+        self.lossrate.append(lossrate)
+
     def print(self, i):
+        hockey_str = ''
+        if self.hockey:
+            winrate = np.array(self.winrate)
+            drawrate = np.array(self.drawrate)
+            lossrate = np.array(self.lossrate)
+            hockey_str = f"""winrate: {np.mean(winrate[-100:]):.2f}, drawrate: {np.mean(drawrate[-100:]):.2f}, lossrate: {np.mean(lossrate[-100:]):.2f}"""
         print(f"""Step {i+1}/{self.n_steps}:
                     test reward: {self.test_rewards[-1]:.2f}
                     mean reward: {np.mean(self.ep_rewards[-self.print_every:]):.2f}, max reward: {np.max(self.ep_rewards[-self.print_every:]):.2f}
                     Avg. step count: {np.mean(self.ep_steps[-100:]):.1f}, Avg ep duration: {np.mean(self.ep_durations[-100:]):.3f}s
                     Avg. critic loss: {np.mean(self.critic_losses[-100:]):.2f}, Avg. actor loss: {np.mean(self.actor_losses[-100:]):.2f}
                     Avg. train duration: {np.mean(self.train_durations[-100:]):.3f}s
+                    {hockey_str}
             """)
 
     def plot(self):
@@ -53,6 +78,10 @@ class Logger:
         ep_rewards = np.array(self.ep_rewards)
         actor_losses = np.array(self.actor_losses)
         critic_losses = np.array(self.critic_losses)
+        if self.hockey:
+            winrate = np.array(self.winrate)
+            drawrate = np.array(self.drawrate)
+            lossrate = np.array(self.lossrate)
 
         if test_rewards.size == 0:
             print('No test rewards to plot')
@@ -63,6 +92,13 @@ class Logger:
             plt.plot(savgol_filter(test_rewards, 10, 3, axis=0), label='test reward')
         plt.title('test reward')
         plt.show()
+
+        if self.hockey:
+            winrate = moving_average(winrate, n=25)
+            plt.plot(savgol_filter(drawrate, 51, 3, axis=0), label='winrate')
+            plt.plot(savgol_filter(lossrate, 51, 3, axis=0), label='drawrate')
+            plt.title('hockey result')
+            plt.show()
 
         plt.plot(savgol_filter(ep_rewards, 51, 3, axis=0), label='reward')
         plt.title('reward')
