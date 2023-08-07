@@ -4,8 +4,13 @@ from .logger import Logger
 
 
 class Trainer:
+
+    def __init__(self):
+        self.logger = None
+        self.current_step = 0
+
     @staticmethod
-    def run(env, agent, n_episodes=100, noise=0, store_transitions=True):
+    def run(env, agent, n_episodes=100, noise=0, store_transitions=True, render=False):
         rewards = []
         observations = []
         actions = []
@@ -16,7 +21,8 @@ class Trainer:
             for t in range(2000):
                 action = agent.act(state, noise)
                 (next_state, reward, done, _trunc, _info) = env.step(action)
-                env.render()
+                if render:
+                    env.render()
 
                 done = _trunc or done
 
@@ -54,8 +60,11 @@ class Trainer:
         n_steps = n_episodes // train_every
         ep_per_step = train_every
         self.logger = Logger(n_steps=n_steps, print_every=test_every)
+
+        n_steps = n_steps + self.current_step
+
         try:
-            for i in range(n_steps):
+            for i in range(self.current_step, n_steps):
                 start = perf_counter()
                 steps, rewards, observations, actions = Trainer.run(
                     env, agent, n_episodes=ep_per_step, noise=noise

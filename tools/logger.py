@@ -40,7 +40,8 @@ class Logger:
         print(f"""Step {i+1}/{self.n_steps}:
                     test reward: {self.test_rewards[-1]:.2f}
                     mean reward: {np.mean(self.ep_rewards[-self.print_every:]):.2f}, max reward: {np.max(self.ep_rewards[-self.print_every:]):.2f}
-                    Avg. step number: {np.mean(self.ep_steps[-100:]):.1f}, Avg ep duration: {np.mean(self.ep_durations[-100:]):.3f}s
+                    Avg. step count: {np.mean(self.ep_steps[-100:]):.1f}, Avg ep duration: {np.mean(self.ep_durations[-100:]):.3f}s
+                    Avg. critic loss: {np.mean(self.critic_losses[-100:]):.2f}, Avg. actor loss: {np.mean(self.actor_losses[-100:]):.2f}
                     Avg. train duration: {np.mean(self.train_durations[-100:]):.3f}s
             """)
 
@@ -56,7 +57,8 @@ class Logger:
         if test_rewards.size == 0:
             print('No test rewards to plot')
         elif test_rewards.size < 10:
-            plt.plot(test_rewards, label='test reward')
+            test_episodes = np.arange(test_rewards.size) * 100
+            plt.plot(test_episodes, test_rewards, label='test reward')
         else:
             plt.plot(savgol_filter(test_rewards, 10, 3, axis=0), label='test reward')
         plt.title('test reward')

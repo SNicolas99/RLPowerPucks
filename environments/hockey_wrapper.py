@@ -1,6 +1,7 @@
 from typing import Literal
 import laserhockey.hockey_env as h_env
 import numpy as np
+from gymnasium.spaces import Box
 
 mode_to_hockey_mode = {
     "defense": h_env.HockeyEnv.TRAIN_DEFENSE,
@@ -30,7 +31,11 @@ class HockeyWrapper:
         else:
             self.opponent = opponent
 
-        self.action_space = self.env.action_space
+        has = self.env.action_space
+        new_low = has.low[:4]
+        new_high = has.high[:4]
+        self.action_space = Box(new_low, new_high, shape=(int(has.shape[0] / 2),), dtype=np.float32)
+        
         self.observation_space = self.env.observation_space
 
     def get_opponent_action(self):

@@ -1,3 +1,8 @@
+'''
+    Code is based on DDPG implementation from RL Lecture given by Georg Martius in 2023
+'''
+
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -13,7 +18,7 @@ sys.path.append("../../..")  # TODO: adjust path
 from tools.memory import ReplayBuffer
 from feedforward import Feedforward, to_torch
 
-torch.set_num_threads(1)
+torch.set_num_threads(4)
 
 
 class UnsupportedSpace(Exception):
@@ -104,19 +109,19 @@ class TD3Agent(object):
         self._action_space = action_space
         self._action_n = action_space.shape[0]
         self._config = {
-            "eps": 0.5,  # Epsilon: noise strength to add to policy # 0.1
+            "eps": 0.2,  # Epsilon: noise strength to add to policy # 0.1
             "discount": 0.995,  # 0.95
-            "buffer_size": int(2e5),  # 1e6
+            "buffer_size": int(3e5),  # 1e6
             "batch_size": 128,  # 128
-            "learning_rate_actor": 0.00001,  # 0.00001
-            "learning_rate_critic": 0.0001,
-            "hidden_sizes_actor": [256, 256],
-            "hidden_sizes_critic": [256, 256, 256],
-            "tau": 0.0002,  # 0.0002
-            "hard_update_frequency": np.inf,  # 50
+            "learning_rate_actor": 0.00002,  # 0.00001
+            "learning_rate_critic": 0.0002, # 0.0001
+            "hidden_sizes_actor": [256, 128], # [256, 256]
+            "hidden_sizes_critic": [256, 196, 128], # [256, 256, 256]
+            "tau": 0.001,  # 0.0002
+            "hard_update_frequency": np.inf,  # 100
             "policy_target_update_interval": 2,  # 2
-            "target_action_noise": 0.2,  # 0.2
-            "target_action_noise_clip": 0.5,  # 0.5
+            "target_action_noise": 0.15,  # 0.2
+            "target_action_noise_clip": 0.4,  # 0.5
             "use_second_critic": True,
             "use_prioritized_replay": False,
         }
@@ -221,10 +226,14 @@ class TD3Agent(object):
     def act(self, observation, eps=None):
         if eps is None:
             eps = self._eps
+        observation = np.atleast_2d(observation)
 
-        action = (
-            self.policy.predict(to_torch(observation)) + eps * self.action_noise()
-        )  # action in -1 to 1 (+ noise)
+        self.policy.eval()
+        action = self.policy.predict(to_torch(observation)).squeeze() # action in -1 to 1 (+ noise)
+        self.policy.train()
+
+        action = action + eps * self.action_noise()
+
         action = self._action_space.low + (action + 1.0) / 2.0 * (
             self._action_space.high - self._action_space.low
         )
@@ -245,12 +254,30 @@ class TD3Agent(object):
         self.action_noise.reset()
 
     def get_target_action_noise(self):
-        noise = self.action_noise() * self._config["target_action_noise"]
+        noise = np.random.randn((self._action_n)) * self._config["target_action_noise"]
         return np.clip(
             noise,
             -self._config["target_action_noise_clip"],
             self._config["target_action_noise_clip"],
         )
+
+    def optimize_actor(self, s):
+
+        for p in self.Q.parameters():
+            p.requires_grad = False
+        self.Q.eval()
+
+        self.optimizer.zero_grad()
+        q = self.Q.Q_value(s, self.policy.forward(s))
+        actor_loss = -torch.mean(q)
+        actor_loss.backward()
+        self.optimizer.step()
+
+        for p in self.Q.parameters():
+            p.requires_grad = True
+        self.Q.train()
+
+        return actor_loss.item()
 
     def train(self, iter_fit=32):
         fit_losses = []
@@ -303,14 +330,9 @@ class TD3Agent(object):
             if self.train_iter % self._config["policy_target_update_interval"] == 0:
                 self._update_target_nets()
 
-                # optimize actor objective
-                self.optimizer.zero_grad()
-                q = self.Q.Q_value(s, self.policy.forward(s))
-                actor_loss = -torch.mean(q)
-                actor_loss.backward()
-                self.optimizer.step()
-
-                actor_losses.append(actor_loss.item())
+                # optimize the actor objective
+                actor_loss = self.optimize_actor(s)
+                actor_losses.append(actor_loss)
 
         return fit_losses, actor_losses
 
