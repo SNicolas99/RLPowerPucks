@@ -17,7 +17,12 @@ class HockeyWrapper:
         mode: Literal["defense", "attack", "normal", "bootcamp"] = "bootcamp",
         opponent="weak",  # weak, strong, mixed, or agent object
         render_mode=None,
+        opponent_list=None,
+        add_opponents=False,
     ):
+
+        self.opponent_list = opponent_list
+
         if render_mode is not None:
             self.env = h_env.HockeyEnv(
                 mode=mode_to_hockey_mode[mode], render_mode=render_mode
@@ -25,7 +30,11 @@ class HockeyWrapper:
         else:
             self.env = h_env.HockeyEnv(mode=mode_to_hockey_mode[mode])
 
-        if opponent == "weak" or opponent == "mixed":
+        if opponent == "mixed":
+            if self.opponent_list is None:
+                self.opponent_list = [h_env.BasicOpponent(weak=True), h_env.BasicOpponent(weak=False)]
+            self.opponent = self.opponent_list[np.random.randint(len(self.opponent_list))]
+        elif opponent == "weak":
             self.opponent = h_env.BasicOpponent(weak=True)
         elif opponent == "strong":
             self.opponent = h_env.BasicOpponent(weak=False)
@@ -45,6 +54,8 @@ class HockeyWrapper:
         self.normal_start = 10000
         self.ishockey = True
 
+    def add_opponent(self, opponent):
+        self.opponent_list.append(opponent)
 
     def get_opponent_action(self):
         opponent_state = self.env.obs_agent_two()
@@ -60,8 +71,7 @@ class HockeyWrapper:
                 else:
                     self.env = h_env.HockeyEnv(mode=h_env.HockeyEnv.TRAIN_SHOOTING)
         if self.opponent == "mixed":
-            choices = ["weak", "strong"]
-            self.opponent = h_env.BasicOpponent(weak=np.random.choice(choices))
+            self.opponent = self.opponent_list[np.random.randint(len(self.opponent_list))]
 
     def reset(self):
         self.episodes += 1

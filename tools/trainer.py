@@ -1,6 +1,9 @@
 import numpy as np
 from time import perf_counter
 from .logger import Logger
+import sys
+sys.path.append("..")
+from algorithms.td3_code_tmp.td3_lecture.TD3 import TD3Agent
 
 
 class Trainer:
@@ -82,9 +85,11 @@ class Trainer:
         n_test_episodes=20,
         noise=0.2,
         player=None,
-        mixed = True,
+        mixed = False,
+        add_opponent_interval = 2000,
     ):
-        hockey = hasattr(env, "ishockey")
+        hockey = hasattr(env, "ishockey") and env.ishockey
+        add_opponents = hasattr(env, "add_opponents") and env.add_opponents
 
         if player is None:
             player = agent
@@ -147,6 +152,16 @@ class Trainer:
                     drawrate = np.mean(test_results == 0)
                     self.logger.log_hockey(winrate, drawrate)
                     self.logger.print(i)
+
+                if i > 0 and add_opponents and i % add_opponent_interval == 0:
+                    opp_agent = TD3Agent(
+                        env.observation_space.shape[0],
+                        env.action_space.shape[0],
+                    )
+                    agent_state = agent.state()
+                    opp_agent.restore_state(agent_state)
+                    env.add_opponent(opp_agent)
+
         except KeyboardInterrupt:
             print("Interrupted")
         return self.logger.ep_rewards
