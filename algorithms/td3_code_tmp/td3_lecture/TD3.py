@@ -1,6 +1,6 @@
-'''
+"""
     Code is based on DDPG implementation from RL Lecture given by Georg Martius in 2023
-'''
+"""
 
 
 import torch
@@ -113,15 +113,15 @@ class TD3Agent(object):
             "discount": 0.995,  # 0.95
             "buffer_size": int(1e6),  # 1e6
             "batch_size": 128,  # 128
-            "learning_rate_actor": 0.00002,  # 0.00001
-            "learning_rate_critic": 0.0002, # 0.0001
-            "hidden_sizes_actor": [256, 128], # [256, 256]
-            "hidden_sizes_critic": [256, 196, 128], # [256, 256, 256]
-            "tau": 0.0008,  # 0.0002
-            "hard_update_frequency": np.inf,  # 100
+            "learning_rate_actor": 0.00001,  # 0.00001
+            "learning_rate_critic": 0.0001,  # 0.0001
+            "hidden_sizes_actor": [256, 256],  # [256, 256]
+            "hidden_sizes_critic": [256, 256, 256],  # [256, 256, 256]
+            "tau": 0.0000,  # 0.0002
+            "hard_update_frequency": 100,  # 100
             "policy_target_update_interval": 2,  # 2
-            "target_action_noise": 0.15,  # 0.2
-            "target_action_noise_clip": 0.4,  # 0.5
+            "target_action_noise": 0.1,  # 0.2
+            "target_action_noise_clip": 0.25,  # 0.5
             "use_second_critic": True,
             "use_prioritized_replay": False,
         }
@@ -229,7 +229,9 @@ class TD3Agent(object):
         observation = np.atleast_2d(observation)
 
         self.policy.eval()
-        action = self.policy.predict(to_torch(observation)).squeeze() # action in -1 to 1 (+ noise)
+        action = self.policy.predict(
+            to_torch(observation)
+        ).squeeze()  # action in -1 to 1 (+ noise)
         self.policy.train()
 
         action = action + eps * self.action_noise()
@@ -262,7 +264,6 @@ class TD3Agent(object):
         )
 
     def optimize_actor(self, s):
-
         for p in self.Q.parameters():
             p.requires_grad = False
         self.Q.eval()

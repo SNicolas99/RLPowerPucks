@@ -4,13 +4,20 @@ from .logger import Logger
 
 
 class Trainer:
-
     def __init__(self):
         self.logger = None
         self.current_step = 0
 
     @staticmethod
-    def run(env, agent, n_episodes=100, noise=0, store_transitions=True, render=False, hockey=False):
+    def run(
+        env,
+        agent,
+        n_episodes=100,
+        noise=0,
+        store_transitions=True,
+        render=False,
+        hockey=False,
+    ):
         rewards = []
         observations = []
         actions = []
@@ -44,13 +51,14 @@ class Trainer:
             ep_reward = 0
 
             if hockey:
-                result = _info['winner']
+                result = _info["winner"]
                 hockey_results.append(result)
 
         observations = np.asarray(observations)
         actions = np.asarray(actions)
         rewards = np.asarray(rewards)
         steps = np.asarray(steps, dtype=np.float32)
+        hockey_results = np.asarray(hockey_results, dtype=np.float32)
         return steps, rewards, observations, actions, hockey_results
 
     def train(
@@ -63,7 +71,7 @@ class Trainer:
         n_test_episodes=20,
         noise=0.2,
     ):
-        hockey = hasattr(env, 'ishockey')
+        hockey = hasattr(env, "ishockey")
 
         n_steps = n_episodes // train_every
         ep_per_step = train_every
@@ -110,8 +118,8 @@ class Trainer:
                         hockey=hockey,
                     )
                     self.logger.log_test(test_rewards)
-                    winrate = (test_results==1).mean()
-                    drawrate = (test_results==0).mean()
+                    winrate = np.mean(test_results == 1)
+                    drawrate = np.mean(test_results == 0)
                     self.logger.log_hockey(winrate, drawrate)
                     self.logger.print(i)
         except KeyboardInterrupt:
