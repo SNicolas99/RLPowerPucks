@@ -8,7 +8,7 @@ import os
 import time
 
 
-## Took parts from exercise
+## IMPORANT NOTICE: This class is built primarily on the exericise code of the reinforcement learning course at the University of Tübingen
 class DQNAgent():
 
     def __init__(self, observation_space, action_space, logger, config):
@@ -21,7 +21,7 @@ class DQNAgent():
         self.e = self.config['epsilon']
         self.PER = self.config['PER']
 
-        if self.PER:
+        if self.PER is True:
             self.buffer = PER_Memory(max_size=self.config["buffer_size"], beta=self.config['beta'], alpha=self.config['alpha'])
         else:
             self.buffer = Memory(max_size=self.config["buffer_size"])
@@ -30,7 +30,8 @@ class DQNAgent():
         self.Q = QFunction(observation_dim=self.observation_dim,
                            action_dim=self.action_space,
                            lr = self.config['learning_rate'],
-                           device=self.config['device'])
+                           device=self.config['device'],
+                           config=config)
 
         # Define the target network as a copy of the original network
         # While training, the target network will be updated with the parameters of the
@@ -69,9 +70,7 @@ class DQNAgent():
         self.buffer.add_transition(transition)
 
     def train(self):
-
-        # Keep this as it is
-        if self.PER:
+        if self.PER is True:
             data, weights, indices = self.buffer.sample(batch=self.config['batch_size'])
         else:
             data = self.buffer.sample(batch=self.config['batch_size'])
@@ -89,15 +88,11 @@ class DQNAgent():
         gamma=self.config['discount']
         td_target = reward + gamma * (1.0-done) * v_prime
 
-        if not self.PER:
-            weights = np.ones(td_target.shape)
-
-            # optimize the lsq objective
-        fit_loss, pred = self.Q.fit(observations=s, actions=a, targets=td_target, weights=weights)
-
-        # Update the priorities of the transitions inside the buffer
-        if self.PER:
+        if self.PER is True:
+            fit_loss, pred = self.Q.PER_fit(observations=s, actions=a, targets=td_target, weights=weights)
             self.buffer.update_priority(idx=indices[:,None], priority=abs(td_target-pred.detach().numpy()))
+        else:
+            fit_loss = self.Q.fit(observations=s, actions=a, targets=td_target)
 
         return fit_loss
 

@@ -1,5 +1,5 @@
 import time
-
+from copy import deepcopy
 import numpy as np
 import hockey_env as h_env
 import os
@@ -26,7 +26,7 @@ import os
 # 16 time left player has puck
 # 17 time left other player has puck
 
-class Trainer:
+class Training:
 
     def __init__(self, logger, config, agent, log_directory) -> None:
         self.logger = logger
@@ -35,7 +35,6 @@ class Trainer:
         self.log_directory = log_directory
 
     def train(self, env, logger):
-        # TODO assign needed arguments to variables
         epsilon = self.config['epsilon']
         epsilon_decay = self.config['e_decay']
         epsilon_min = self.config['e_min']
@@ -66,10 +65,13 @@ class Trainer:
             [0, 0, 1, 0],
             [0, 0, 0, 1]
         ]
-        # TODO Logger Methode, die nach dem initialisieren erstmal alle wichtigen Variablen loggt
 
-        print("Opponent weak: " + str(self.config['weak_opponent']))
-        player2 = h_env.BasicOpponent(weak=self.config['weak_opponent'])
+        if self.config['play_own_agent'] is True:
+            print("play own agent")
+            player2 = deepcopy(self.agent)
+        else:
+            print("Opponent weak: " + str(self.config['weak_opponent']))
+            player2 = h_env.BasicOpponent(weak=self.config['weak_opponent'])
 
         start_time = time.time()
         # run through every episode
@@ -97,16 +99,18 @@ class Trainer:
 
             # For every step do
             for i in range(self.config['step_max']):
-                a1 = self.agent.act(ob, eps=epsilon)
-                a1_list = ACTIONS[a1]
+                a_player1 = self.agent.act(ob, eps=epsilon)
+                a_player1_list = ACTIONS[a_player1]
                 if self.config['training_mode'] == 'shooting':
                     a_player2 = [0, 0, 0, 0]
                 else:  # in case mode = normal or defense
                     a_player2 = player2.act(ob2)
-                (ob_new, reward, done, player1_contact_puck, info) = env.step(np.hstack([a1_list, a_player2]))
+                    if not isinstance(a_player2, np.ndarray):
+                        a_player2 = ACTIONS[a_player2]
+                (ob_new, reward, done, player1_contact_puck, info) = env.step(np.hstack([a_player1_list, a_player2]))
 
                 curr_reward = reward + 0.05 * info['reward_touch_puck'] + 3 * info[
-                    'reward_closeness_to_puck']  ## TODO figure out a good reward function
+                    'reward_closeness_to_puck']
                 reward_total += curr_reward
                 reward_list.append(curr_reward)
 
@@ -116,7 +120,7 @@ class Trainer:
                 if self.config['render_training']:
                     env.render()
 
-                self.agent.store_transition((ob, a1, reward, ob_new, done))
+                self.agent.store_transition((ob, a_player1, reward, ob_new, done))
 
                 if done:
                     result_list.append(env.winner)
@@ -144,10 +148,15 @@ class Trainer:
             except:
                 print("Could not access filepath for saving weights")
 
+        self.call_logger(max_episodes=max_episodes, result_list=result_list, reward_total=reward_total, total_time=total_time, e_decay_list=e_decay_list, reward_list=reward_list)
+
+
+    def call_logger(self, max_episodes, result_list, reward_total, total_time, e_decay_list, reward_list):
         self.logger.print_and_log_main_run_data(max_episodes=max_episodes,
-                                                result_list=result_list,
-                                                reward_total=reward_total,
-                                                total_time=total_time)
+                                                        result_list=result_list,
+                                                        reward_total=reward_total,
+                                                        total_time=total_time)
         self.logger.plot_win_percentage(result_list, final=True)
+        self.logger.plot_win_percentage_seperately(result_list)
         self.logger.plot_e_decay(e_decay_list, final=True)
         self.logger.plot_reward(reward_list=reward_list, final=True)

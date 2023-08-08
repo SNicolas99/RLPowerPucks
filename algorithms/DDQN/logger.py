@@ -48,6 +48,7 @@ class Logger:
                 win_percentages.append(win_count / (lose_count+win_count))
 
 
+
         # Filter win_percentages to keep only values at intervals of 100
         filtered_win_percentages = win_percentages[::20]
         filtered_win_percentages[0] = 0
@@ -61,7 +62,47 @@ class Logger:
         if final:
             plt.savefig(os.path.join(self.log_directory, 'win_percentage.png'))
 
+
         plt.show()
+
+
+    def plot_win_percentage_seperately(self, result_list):
+        result = []
+        count_1 = 0
+        count_minus1 = 0
+
+        for i, num in enumerate(result_list, 1):
+            if num == 1:
+                count_1 += 1
+            elif num == -1:
+                count_minus1 += 1
+
+            if i % 1000 == 0:
+                if count_minus1 == 0:
+                    result.append(100.0)  # If there are no -1s, append 100% for 1s.
+                else:
+                    percentage = (count_1 / (count_minus1+count_1)) * 100.0
+                    result.append(percentage)
+                count_1 = 0
+                count_minus1 = 0
+
+        x = [i * 1000 for i in range(1, len(result) + 1)]
+
+        print(str(x))
+        print(str(result))
+
+        plt.plot(x, result, marker='o', linestyle='-', color='b')
+        plt.xlabel('Episodes in 1000')
+        plt.ylabel('Win/Lose Percentage')
+        plt.title('Wins compared to losses')
+        plt.grid(True)
+        plt.show()
+
+        plt.savefig(os.path.join(self.log_directory, 'Win_Perecentage_1000_steps.png'))
+
+
+
+
 
     def plot_e_decay(self, e_decay_list, final=False):
         plt.plot(range(1, len(e_decay_list) + 1), e_decay_list)

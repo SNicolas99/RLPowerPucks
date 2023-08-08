@@ -1,6 +1,6 @@
 import numpy as np
 
-# Taken from Exercise Sheet
+# IMPORTANT NOTICE: Partly taken from exercises from the Reinforcement Learning Course at the University of Tübingen
 
 # class to store transitions
 class Memory():

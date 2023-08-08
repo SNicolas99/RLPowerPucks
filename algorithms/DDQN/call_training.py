@@ -3,11 +3,10 @@ from argparse import ArgumentParser
 import torch as T
 import hockey_env as env
 from agent import DQNAgent
-from training import Trainer
+from training import Training
 import os
 import time
 
-## TODO adapt and try out default values
 arg_parser = ArgumentParser()
 # Arguments for Epsilon-Decay
 arg_parser.add_argument('-e', '--epsilon', type=float, default=1)
@@ -17,7 +16,6 @@ arg_parser.add_argument('--weak_opponent', type=bool, default=False)
 
 arg_parser.add_argument('--play_own_agent', action='store_true')
 
-## TODO find out whether 16,32, 64 is better for batch size
 arg_parser.add_argument('--batch_size', type=int, default=32)
 arg_parser.add_argument('--discount', type=float, default=0.98)
 arg_parser.add_argument('--gradient_update_frequency', type=int, default= 1000)
@@ -30,7 +28,7 @@ arg_parser.add_argument('--render_training', action='store_true')
 arg_parser.add_argument('--weight_path', type=str, default="")
 arg_parser.add_argument('--save_weights', type=bool, default=False)
 arg_parser.add_argument('--use_existing_weights', type=bool, default=False)
-## TODO play with buffer_size and experience_replay_frequency
+
 arg_parser.add_argument('--buffer_size', type=int, default=1000000)
 arg_parser.add_argument('--experience_replay_frequency', type=int, default=5)
 arg_parser.add_argument('--use_target_net', default=True)
@@ -39,7 +37,8 @@ arg_parser.add_argument('--PER', default=False)
 arg_parser.add_argument('--alpha', default=0.6)
 arg_parser.add_argument('--beta', default=0.4)
 arg_parser.add_argument('--beta_incremement', default=0.00001)
-# TODO add further arguments when needed
+arg_parser.add_argument('--dueling_architecture', type=bool, default=True)
+
 
 ## Short info: although I am using a Macbook with M1 chip which doesnt support cuda at all,
 ## I still included the option to use cuda in the code to also be able to run it with cuda support on another machine
@@ -47,8 +46,6 @@ parsed_args = arg_parser.parse_args()
 
 if __name__ == '__main__':
     parsed_args.device = T.device('cuda' if parsed_args.cuda and T.cuda.is_available() else 'cpu')
-    print("device: " + str(parsed_args))
-    print(str(parsed_args.device.type))
 
     if parsed_args.training_mode == 'normal':
         mode = env.HockeyEnv_BasicOpponent.NORMAL
@@ -95,5 +92,5 @@ if __name__ == '__main__':
                      action_space=env.action_space
                      )
 
-    trainer = Trainer(logger=logger, config=config, agent=agent, log_directory=dir)
-    trainer.train(env=env, logger=logger)
+    training = Training(logger=logger, config=config, agent=agent, log_directory=dir)
+    training.train(env=env, logger=logger)
