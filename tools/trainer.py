@@ -82,7 +82,7 @@ class Trainer:
         n_episodes=1000,
         train_every=1,
         test_every=100,
-        n_test_episodes=20,
+        n_test_episodes=100,
         noise=0.2,
         player=None,
         mixed = False,
@@ -152,15 +152,16 @@ class Trainer:
                     drawrate = np.mean(test_results == 0)
                     self.logger.log_hockey(winrate, drawrate)
                     self.logger.print(i)
-
                 if i > 0 and add_opponents and i % add_opponent_interval == 0:
                     opp_agent = TD3Agent(
-                        env.observation_space.shape[0],
-                        env.action_space.shape[0],
+                        env.observation_space,
+                        env.action_space,
                     )
                     agent_state = agent.state()
                     opp_agent.restore_state(agent_state)
                     env.add_opponent(opp_agent)
+                    print("Added opponent")
+                    self.current_step = i + 1
 
         except KeyboardInterrupt:
             print("Interrupted")

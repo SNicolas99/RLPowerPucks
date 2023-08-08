@@ -21,6 +21,8 @@ class HockeyWrapper:
         add_opponents=False,
     ):
 
+        self.add_opponents = add_opponents
+        self.mix_opponents = opponent == "mixed"
         self.opponent_list = opponent_list
 
         if render_mode is not None:
@@ -30,7 +32,7 @@ class HockeyWrapper:
         else:
             self.env = h_env.HockeyEnv(mode=mode_to_hockey_mode[mode])
 
-        if opponent == "mixed":
+        if self.mix_opponents:
             if self.opponent_list is None:
                 self.opponent_list = [h_env.BasicOpponent(weak=True), h_env.BasicOpponent(weak=False)]
             self.opponent = self.opponent_list[np.random.randint(len(self.opponent_list))]
@@ -70,7 +72,7 @@ class HockeyWrapper:
                     self.env = h_env.HockeyEnv(mode=h_env.HockeyEnv.TRAIN_DEFENSE)
                 else:
                     self.env = h_env.HockeyEnv(mode=h_env.HockeyEnv.TRAIN_SHOOTING)
-        if self.opponent == "mixed":
+        if self.mix_opponents:
             self.opponent = self.opponent_list[np.random.randint(len(self.opponent_list))]
 
     def reset(self):
