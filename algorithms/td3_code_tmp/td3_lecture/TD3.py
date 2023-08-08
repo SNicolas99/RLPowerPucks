@@ -16,7 +16,7 @@ import sys
 sys.path.append("../../..")  # TODO: adjust path
 
 from tools.memory import ReplayBuffer
-from feedforward import Feedforward, to_torch
+from tools.feedforward import Feedforward, to_torch
 
 torch.set_num_threads(4)
 
