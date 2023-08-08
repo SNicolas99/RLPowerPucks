@@ -110,14 +110,14 @@ class TD3Agent(object):
         self._action_n = action_space.shape[0]
         self._config = {
             "eps": 0.2,  # Epsilon: noise strength to add to policy # 0.1
-            "discount": 0.995,  # 0.95
+            "discount": 0.97,  # 0.95
             "buffer_size": int(1e6),  # 1e6
             "batch_size": 128,  # 128
             "learning_rate_actor": 0.00001,  # 0.00001
             "learning_rate_critic": 0.0001,  # 0.0001
             "hidden_sizes_actor": [256, 256],  # [256, 256]
             "hidden_sizes_critic": [256, 256, 256],  # [256, 256, 256]
-            "tau": 0.0000,  # 0.0002
+            "tau": 0.0002,  # 0.0002
             "hard_update_frequency": 100,  # 100
             "policy_target_update_interval": 2,  # 2
             "target_action_noise": 0.1,  # 0.2

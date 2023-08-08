@@ -11,13 +11,20 @@ class Trainer:
     @staticmethod
     def run(
         env,
-        agent,
+        player,
         n_episodes=100,
         noise=0,
         store_transitions=True,
         render=False,
         hockey=False,
     ):
+        
+        offpolicy = False
+        if not isinstance(store_transitions, bool):
+            agent = store_transitions
+            store_transitions = True
+            offpolicy = True
+
         rewards = []
         observations = []
         actions = []
@@ -27,7 +34,11 @@ class Trainer:
             ep_reward = 0
             state, _info = env.reset()
             for t in range(2000):
-                action = agent.act(state, noise)
+                if offpolicy:
+                    action = player.act(state)
+                    action = np.clip(action + np.random.normal(0, noise, action.shape), env.action_space.low, env.action_space.high)
+                else:
+                    action = player.act(state, noise)
                 (next_state, reward, done, _trunc, _info) = env.step(action)
                 if render:
                     env.render()
@@ -58,7 +69,7 @@ class Trainer:
         actions = np.asarray(actions)
         rewards = np.asarray(rewards)
         steps = np.asarray(steps, dtype=np.float32)
-        hockey_results = np.asarray(hockey_results, dtype=np.float32)
+        hockey_results = np.asarray(hockey_results)
         return steps, rewards, observations, actions, hockey_results
 
     def train(
@@ -70,8 +81,14 @@ class Trainer:
         test_every=100,
         n_test_episodes=20,
         noise=0.2,
+        player=None,
+        mixed = True,
     ):
         hockey = hasattr(env, "ishockey")
+
+        if player is None:
+            player = agent
+        player_og = player
 
         n_steps = n_episodes // train_every
         ep_per_step = train_every
@@ -82,8 +99,15 @@ class Trainer:
         try:
             for i in range(self.current_step, n_steps):
                 start = perf_counter()
-                steps, rewards, observations, actions, results = Trainer.run(
-                    env, agent, n_episodes=ep_per_step, noise=noise
+                
+                if mixed:
+                    if i%2 == 0:
+                        player = player_og
+                    else:
+                        player = agent
+
+                steps, rewards, observations, actions, results = self.run(
+                    env, player, n_episodes=ep_per_step, noise=noise, store_transitions=agent, hockey=hockey
                 )
                 ep_duration = (perf_counter() - start) / ep_per_step
 
