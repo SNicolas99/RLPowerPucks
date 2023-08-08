@@ -15,7 +15,7 @@ class HockeyWrapper:
     def __init__(
         self,
         mode: Literal["defense", "attack", "normal", "bootcamp"] = "bootcamp",
-        opponent="weak",  # weak, strong, or agent object
+        opponent="weak",  # weak, strong, mixed, or agent object
         render_mode=None,
     ):
         if render_mode is not None:
@@ -25,7 +25,7 @@ class HockeyWrapper:
         else:
             self.env = h_env.HockeyEnv(mode=mode_to_hockey_mode[mode])
 
-        if opponent == "weak":
+        if opponent == "weak" or opponent == "mixed":
             self.opponent = h_env.BasicOpponent(weak=True)
         elif opponent == "strong":
             self.opponent = h_env.BasicOpponent(weak=False)
@@ -59,6 +59,9 @@ class HockeyWrapper:
                     self.env = h_env.HockeyEnv(mode=h_env.HockeyEnv.TRAIN_DEFENSE)
                 else:
                     self.env = h_env.HockeyEnv(mode=h_env.HockeyEnv.TRAIN_SHOOTING)
+        if self.opponent == "mixed":
+            choices = ["weak", "strong"]
+            self.opponent = h_env.BasicOpponent(weak=np.random.choice(choices))
 
     def reset(self):
         self.episodes += 1
