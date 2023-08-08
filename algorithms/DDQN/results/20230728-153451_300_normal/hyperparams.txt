@@ -1,0 +1,30 @@
+###########################
+HYPERPARAMETERS
+###########################
+e: 1
+e_min: 0.1
+e_decay: 0.0005
+batch_size: 32
+discount: 0.98
+grd_upd_frq: 800
+step_max: 300
+num_episodes: 300
+training_mode: normal
+learning_rate: 0.0001
+buffer_size: 1000000
+exp_rep_frq: 5
+use_target_net: True
+use_PER: False
+use_existing_weights: False
+weight_path: 
+###########################
+
+
+###########################
+RUN RESULTS
+###########################
+Total Time: 5.966 minutes
+Reward Total: -19757.885
+Win/Lose Rate: 0.163
+Win/Lose/Undecided: 20/123/157
+###########################

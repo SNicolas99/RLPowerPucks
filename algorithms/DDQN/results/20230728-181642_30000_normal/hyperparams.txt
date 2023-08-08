@@ -1,0 +1,20 @@
+###########################
+HYPERPARAMETERS
+###########################
+e: 1
+e_min: 0.1
+e_decay: 0.0005
+batch_size: 16
+discount: 0.98
+grd_upd_frq: 800
+step_max: 200
+num_episodes: 30000
+training_mode: normal
+learning_rate: 0.0001
+buffer_size: 100000
+exp_rep_frq: 200
+use_target_net: True
+use_PER: False
+use_existing_weights: False
+weight_path: 
+###########################
