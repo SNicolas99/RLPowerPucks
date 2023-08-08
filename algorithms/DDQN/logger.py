@@ -62,6 +62,12 @@ class Logger:
         if final:
             plt.savefig(os.path.join(self.log_directory, 'win_percentage.png'))
 
+            # TODO: See if this works properly
+            file = open(os.path.join(self.log_directory, "hyperparams.txt"), "a")
+            file.write("#### Win_Percentage_List ####\n")
+            file.write(str(win_percentages))
+            file.close()
+
 
         plt.show()
 

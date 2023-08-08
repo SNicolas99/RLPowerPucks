@@ -11,7 +11,7 @@ arg_parser = ArgumentParser()
 # Arguments for Epsilon-Decay
 arg_parser.add_argument('-e', '--epsilon', type=float, default=1)
 arg_parser.add_argument('--e_min', type=float, default=0.1)
-arg_parser.add_argument('--e_decay', type=float, default=0.0004)
+arg_parser.add_argument('--e_decay', type=float, default=0.0005)
 arg_parser.add_argument('--weak_opponent', type=bool, default=False)
 
 arg_parser.add_argument('--play_own_agent', action='store_true')
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     env = env.HockeyEnv(mode=mode)
 
     # Create an agent
-    agent = DQNAgent(logger=logger,
+    agent = DQNAgent(
                      config=config,
                      observation_space=env.observation_space.shape[0],
                      action_space=env.action_space

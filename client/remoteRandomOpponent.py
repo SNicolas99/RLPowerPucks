@@ -6,7 +6,7 @@ from client.backend.client import Client
 class RemoteRandomOpponent(RemoteControllerInterface):
 
     def __init__(self):
-        RemoteControllerInterface.__init__(self, identifier='StrongBasicOpponent')
+        RemoteControllerInterface.__init__(self, identifier='RandomActions')
 
     def remote_act(self, 
             obs : np.ndarray,

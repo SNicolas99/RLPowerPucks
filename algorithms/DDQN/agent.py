@@ -1,9 +1,9 @@
 import copy
 
 import numpy as np
-from q_dueling_network import QFunction
 import torch as T
-from memory import Memory, PER_Memory
+from algorithms.DDQN.memory import Memory, PER_Memory
+from algorithms.DDQN.q_dueling_network import QFunction
 import os
 import time
 
@@ -11,13 +11,29 @@ import time
 ## IMPORANT NOTICE: This class is built primarily on the exericise code of the reinforcement learning course at the University of Tübingen
 class DQNAgent():
 
-    def __init__(self, observation_space, action_space, logger, config):
+    def __init__(self, observation_space, action_space, config=False, tournament_weights=False, tournament_call=False):
 
         self.observation_dim = observation_space
         self.action_space = action_space
-
-
         self.config = config
+
+        if tournament_call is True:
+            self.config ={
+                "epsilon": 0,
+                "PER": True,
+                "learning_rate": 0.0001,
+                "device": None,
+                "use_existing_weights": True,
+                "weight_path": tournament_weights,
+                "batch_size": 32,
+                "discount": 0.98,
+                "dueling_architecture": True,
+                "buffer_size":2000000,
+                "beta": 0.4,
+                "alpha": 0.6
+            }
+
+
         self.e = self.config['epsilon']
         self.PER = self.config['PER']
 
@@ -31,7 +47,7 @@ class DQNAgent():
                            action_dim=self.action_space,
                            lr = self.config['learning_rate'],
                            device=self.config['device'],
-                           config=config)
+                           config=self.config)
 
         # Define the target network as a copy of the original network
         # While training, the target network will be updated with the parameters of the
@@ -46,6 +62,7 @@ class DQNAgent():
                 print("Could not use existing weights")
         else:
             print("Not using existing weights")
+
 
 
     # keep this as it is

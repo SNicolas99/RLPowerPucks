@@ -10,9 +10,6 @@ class DuelingDeepQNetwork(nn.Module):
         super(DuelingDeepQNetwork, self).__init__()
         self.config = config
 
-        if device.type == 'cuda':
-            self.cuda()
-
         if self.config['dueling_architecture'] is True:
             self.fc1 = nn.Linear(input_dims, 256)
 
@@ -31,8 +28,6 @@ class DuelingDeepQNetwork(nn.Module):
 
 
     def forward(self, x):
-        if self.device.type == 'cuda' and x.device.type != 'cuda':
-            x = x.to(self.device)
         x = nn.functional.relu(self.fc1(x))
 
         if self.config['dueling_architecture'] is True:
