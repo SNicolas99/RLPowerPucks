@@ -92,7 +92,8 @@ class Trainer:
 
         n_steps = n_episodes // train_every
         ep_per_step = train_every
-        self.logger = Logger(n_steps=n_steps, print_every=test_every)
+        if self.logger is None:
+            self.logger = Logger(n_steps=n_steps, print_every=test_every)
 
         n_steps = n_steps + self.current_step
 

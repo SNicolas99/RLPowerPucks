@@ -34,6 +34,8 @@ class Logger:
 
         self.hockey = False
 
+        self.test_interval = 100
+
     def log(self, steps, ep_rewards, actor_losses, critic_losses, ep_durations, train_durations):
         items = [steps, ep_rewards, actor_losses, critic_losses, ep_durations, train_durations]
         lists = [self.ep_steps, self.ep_rewards, self.actor_losses, self.critic_losses, self.ep_durations, self.train_durations]
@@ -51,16 +53,13 @@ class Logger:
         self.hockey = True
         self.winrate.append(winrate)
         self.drawrate.append(drawrate)
-        lossrate = 1-np.mean(self.winrate[-100:])-np.mean(self.drawrate[-100:])
+        lossrate = 1-winrate-drawrate
         self.lossrate.append(lossrate)
 
     def print(self, i):
         hockey_str = ''
         if self.hockey:
-            winrate = np.array(self.winrate)
-            drawrate = np.array(self.drawrate)
-            lossrate = np.array(self.lossrate)
-            hockey_str = f"""winrate: {np.mean(winrate[-100:]):.2f}, drawrate: {np.mean(drawrate[-100:]):.2f}, lossrate: {np.mean(lossrate[-100:]):.2f}"""
+            hockey_str = f"""winrate: {self.winrate[-1]:.2f}, drawrate: {self.drawrate[-1]:.2f}, lossrate: {self.lossrate[-1]:.2f}"""
         print(f"""Step {i+1}/{self.n_steps}:
                     test reward: {self.test_rewards[-1]:.2f}
                     mean reward: {np.mean(self.ep_rewards[-self.print_every:]):.2f}, max reward: {np.max(self.ep_rewards[-self.print_every:]):.2f}
@@ -80,25 +79,28 @@ class Logger:
         critic_losses = np.array(self.critic_losses)
         if self.hockey:
             winrate = np.array(self.winrate)
+            drawrate = np.array(self.drawrate)
             lossrate = np.array(self.lossrate)
+
+        test_episodes = np.arange(test_rewards.size) * self.test_interval
+        hockey_episodes = np.arange(winrate.size) * self.test_interval
 
         if test_rewards.size == 0:
             print('No test rewards to plot')
         elif test_rewards.size < 51:
-            test_episodes = np.arange(test_rewards.size) * 100
             plt.plot(test_episodes, test_rewards, label='test reward')
         else:
-            plt.plot(savgol_filter(test_rewards, 10, 3, axis=0), label='test reward')
+            plt.plot(test_episodes, savgol_filter(test_rewards, 10, 3, axis=0), label='test reward')
         plt.title('test reward')
         plt.show()
 
         if self.hockey:
             if winrate.size < 51:
-                plt.plot(winrate, label='winrate')
-                plt.plot(lossrate, label='lossrate')
+                plt.plot(hockey_episodes, winrate, label='winrate')
+                plt.plot(hockey_episodes, lossrate, label='lossrate')
             else:
-                plt.plot(savgol_filter(winrate, 51, 3, axis=0), label='winrate')
-                plt.plot(savgol_filter(lossrate, 51, 3, axis=0), label='lossrate')
+                plt.plot(hockey_episodes, savgol_filter(winrate, 51, 3, axis=0), label='winrate')
+                plt.plot(hockey_episodes, savgol_filter(lossrate, 51, 3, axis=0), label='lossrate')
             plt.title('hockey result')
             plt.legend()
             plt.show()
@@ -136,6 +138,9 @@ class Logger:
             'ep_durations': self.ep_durations,
             'train_durations': self.train_durations,
             'test_rewards': self.test_rewards,
+            'winrate': self.winrate,
+            'drawrate': self.drawrate,
+            'lossrate': self.lossrate
         }
         np.save(path, state)
     
@@ -148,3 +153,6 @@ class Logger:
         self.ep_durations = state['ep_durations']
         self.train_durations = state['train_durations']
         self.test_rewards = state['test_rewards']
+        self.winrate = state['winrate']
+        self.drawrate = state['drawrate']
+        self.lossrate = state['lossrate']
