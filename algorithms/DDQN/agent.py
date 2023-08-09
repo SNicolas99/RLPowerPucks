@@ -13,9 +13,10 @@ class DQNAgent():
 
     def __init__(self, observation_space, action_space, config=False, tournament_weights=False, tournament_call=False):
 
-        self.observation_dim = observation_space
+        self.observation_dim = observation_space.shape[0]
         self.action_space = action_space
         self.config = config
+        print("tournament call: " + str(tournament_call))
 
         if tournament_call is True:
             self.config ={

@@ -1,8 +1,8 @@
 import numpy as np
 
 from laserhockey.hockey_env import BasicOpponent
-from client.remoteControllerInterface import RemoteControllerInterface
-from client.backend.client import Client
+from client_old.remoteControllerInterface import RemoteControllerInterface
+from client_old.backend.client import Client
 
 class RemoteBasicOpponent(BasicOpponent, RemoteControllerInterface):
 

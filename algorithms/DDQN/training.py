@@ -1,5 +1,7 @@
 import time
 from copy import deepcopy
+import random
+
 import numpy as np
 import hockey_env as h_env
 import os
@@ -73,6 +75,9 @@ class Training:
             print("Opponent weak: " + str(self.config['weak_opponent']))
             player2 = h_env.BasicOpponent(weak=self.config['weak_opponent'])
 
+        # TODO: Only in for tournament training
+        opponent_list = [h_env.BasicOpponent(weak=False)]
+
         start_time = time.time()
         # run through every episode
         while episode_count <= max_episodes:
@@ -82,6 +87,11 @@ class Training:
             if (episode_count % 1000) == 0:
                 self.logger.plot_win_percentage(outcomes=result_list)
                 self.logger.print_win_every_1000(result_list=result_list, episode_count=episode_count)
+
+
+            #if (episode_count % 1000) == 0:
+             #   opponent_list.append(deepcopy(self.agent))
+
 
             # Reset the environment every episode
             ob = env.reset()  # returns obs, info
@@ -94,6 +104,8 @@ class Training:
 
             ob2 = env.obs_agent_two()
 
+            # TODO test this
+            player2 = random.choice(opponent_list)
             touched = 0
             first_time_touch = 1
 

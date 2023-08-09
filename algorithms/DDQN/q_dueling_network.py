@@ -1,8 +1,8 @@
-
 import numpy as np
 import torch as T
 import torch.nn as nn
 import torch.optim as optim
+
 
 ## For source see https://www.youtube.com/watch?v=H9uCYnG3LlE
 class DuelingDeepQNetwork(nn.Module):
@@ -13,10 +13,10 @@ class DuelingDeepQNetwork(nn.Module):
         if self.config['dueling_architecture'] is True:
             self.fc1 = nn.Linear(input_dims, 256)
 
-            self.A1 = nn.Linear(256,256)
-            self.V1 = nn.Linear(256,256)
-            self.A2 = nn.Linear(256,256)
-            self.V2 = nn.Linear(256,256)
+            self.A1 = nn.Linear(256, 256)
+            self.V1 = nn.Linear(256, 256)
+            self.A2 = nn.Linear(256, 256)
+            self.V2 = nn.Linear(256, 256)
 
             self.A_stream = nn.Linear(256, 8)
             self.V_stream = nn.Linear(256, 1)
@@ -24,8 +24,7 @@ class DuelingDeepQNetwork(nn.Module):
             self.fc1 = nn.Linear(input_dims, 256)
             self.fc2 = nn.Linear(256, 256)
             self.fc3 = nn.Linear(256, 256)
-            self.Q = nn.Linear(256,8)
-
+            self.Q = nn.Linear(256, 8)
 
     def forward(self, x):
         x = nn.functional.relu(self.fc1(x))
@@ -69,11 +68,10 @@ class QFunction(DuelingDeepQNetwork):
                          device=device,
                          config=config)
 
-
-        self.loss = nn.SmoothL1Loss() # MSELoss()
+        self.loss = nn.SmoothL1Loss()  # MSELoss()
         self.lr = lr
-        self.optimizer=optim.Adam(self.parameters(),
-                                  lr=self.lr)
+        self.optimizer = optim.Adam(self.parameters(),
+                                    lr=self.lr)
         self.device = device
         self.config = config
 
@@ -81,7 +79,8 @@ class QFunction(DuelingDeepQNetwork):
         # Forward pass
         prediction = self.Q_value(observations=observations, actions=actions)
         # Compute Loss and weight it
-        weighted_loss = self.loss(prediction, T.from_numpy(targets).to(self.device).float()) * (T.from_numpy(weights).to(self.device).float())
+        weighted_loss = self.loss(prediction, T.from_numpy(targets).to(self.device).float()) * (
+            T.from_numpy(weights).to(self.device).float())
         self.optimizer.zero_grad()
         # Backward pass
         mean_wl = weighted_loss.mean()
@@ -102,9 +101,9 @@ class QFunction(DuelingDeepQNetwork):
         self.optimizer.step()
         return mean_wl.item()
 
-
     def Q_value(self, observations, actions):
-        return T.gather(self.forward(T.from_numpy(observations).to(self.device).float()), 1, T.from_numpy(actions[:,None]).to(self.device).long())
+        return T.gather(self.forward(T.from_numpy(observations).to(self.device).float()), 1,
+                        T.from_numpy(actions[:, None]).to(self.device).long())
 
     def maxQ(self, observations):
         # compute the maximal Q-value
@@ -113,12 +112,3 @@ class QFunction(DuelingDeepQNetwork):
     def greedyAction(self, observations):
         # this computes the greedy action
         return np.argmax(self.predict(observations), axis=-1)
-
-
-
-
-
-
-
-
-

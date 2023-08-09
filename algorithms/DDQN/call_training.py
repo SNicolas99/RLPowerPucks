@@ -23,13 +23,13 @@ arg_parser.add_argument('--step_max', type=int, default=300)
 arg_parser.add_argument('--num_episodes', type=int, default=200)
 arg_parser.add_argument('--training_mode', default='normal')
 arg_parser.add_argument('--cuda', action='store_true')
-arg_parser.add_argument('--learning_rate', type=float, default=0.0001)
+arg_parser.add_argument('--learning_rate', type=float, default=0.00005)
 arg_parser.add_argument('--render_training', action='store_true')
 arg_parser.add_argument('--weight_path', type=str, default="")
 arg_parser.add_argument('--save_weights', type=bool, default=False)
 arg_parser.add_argument('--use_existing_weights', type=bool, default=False)
 
-arg_parser.add_argument('--buffer_size', type=int, default=2000000)
+arg_parser.add_argument('--buffer_size', type=int, default=1000000)
 arg_parser.add_argument('--experience_replay_frequency', type=int, default=5)
 arg_parser.add_argument('--use_target_net', default=True)
 # Arguments for Prioritized Experience Replay
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     # Create an agent
     agent = DQNAgent(
                      config=config,
-                     observation_space=env.observation_space.shape[0],
+                     observation_space=env.observation_space,
                      action_space=env.action_space
                      )
 

@@ -9,7 +9,7 @@ from twisted.internet import reactor, task
 
 from .network_interface import NetworkInterface, NetworkInterfaceConnectionError
 from .game import Game
-from client.remoteControllerInterface import RemoteControllerInterface
+from client_old.remoteControllerInterface import RemoteControllerInterface
 
 
 def parseOptions():
@@ -200,7 +200,7 @@ escape.
             self.waiting_for_game_loop.stop()
             del(self.waiting_for_game_loop)
 
-        action = self.controller.remote_act(np.asarray(ob))
+        action = self.controller.remote_act(np.asarray(ob)).tolist()
 
         self.current_game = Game(identifier=info['id'],
                                  player_one=info["player"][0],
@@ -230,7 +230,8 @@ escape.
              info : Optional[Dict] = None
             ) -> None:
 
-        action = self.controller.remote_act(np.asarray(ob))
+
+        action = self.controller.remote_act(np.asarray(ob)).tolist()
 
         try:
             self.current_game.add_transition(next_obs=ob,

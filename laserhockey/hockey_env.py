@@ -601,8 +601,8 @@ class HockeyEnv(gym.Env, EzPickle):
     action_cont = [(discrete_action == 1) * -1 + (discrete_action == 2) * 1,  # player x
                    (discrete_action == 3) * -1 + (discrete_action == 4) * 1,  # player y
                    (discrete_action == 5) * -1 + (discrete_action == 6) * 1]  # player angle
-    if self.keep_mode:
-      action_cont.append(discrete_action == 7)
+    # TODO this is only a test
+    action_cont.append(discrete_action == 7)
 
     return action_cont
 
