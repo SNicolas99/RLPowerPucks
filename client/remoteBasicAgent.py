@@ -14,10 +14,10 @@ class RemoteBasicAgent(TD3Agent, RemoteControllerInterface):
     def __init__(self, keep_mode=True):
         env = HockeyWrapper()
         TD3Agent.__init__(self, env.observation_space, env.action_space)
-        agent_state = torch.load("../algorithms/td3_code_tmp/td3_lecture/checkpoint_hockey.pth")
+        agent_state = torch.load("../algorithms/td3_code_tmp/td3_lecture/checkpoint_hockey_add.pth")
         self.restore_state(agent_state)
 
-        RemoteControllerInterface.__init__(self, identifier='TD3')
+        RemoteControllerInterface.__init__(self, identifier='TD3++')
 
     def remote_act(self,
             obs : np.ndarray,
