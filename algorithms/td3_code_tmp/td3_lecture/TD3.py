@@ -117,7 +117,7 @@ class TD3Agent(object):
             "learning_rate_critic": 0.0001,  # 0.0001
             "hidden_sizes_actor": [256, 256],  # [256, 256]
             "hidden_sizes_critic": [256, 256, 256],  # [256, 256, 256]
-            "tau": 0.0004,  # 0.0002
+            "tau": 0.001,  # 0.0002
             "hard_update_frequency": np.inf,  # 100
             "policy_target_update_interval": 2,  # 2
             "target_action_noise": 0.1,  # 0.2

@@ -60,7 +60,7 @@ class Logger:
         hockey_str = ''
         if self.hockey:
             hockey_str = f"""winrate: {self.winrate[-1]:.2f}, drawrate: {self.drawrate[-1]:.2f}, lossrate: {self.lossrate[-1]:.2f}"""
-        print(f"""Step {i+1}/{self.n_steps}:
+        print(f"""Step {i}/{self.n_steps}:
                     test reward: {self.test_rewards[-1]:.2f}
                     mean reward: {np.mean(self.ep_rewards[-self.print_every:]):.2f}, max reward: {np.max(self.ep_rewards[-self.print_every:]):.2f}
                     Avg. step count: {np.mean(self.ep_steps[-100:]):.1f}, Avg ep duration: {np.mean(self.ep_durations[-100:]):.3f}s

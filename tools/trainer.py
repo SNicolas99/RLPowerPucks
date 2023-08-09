@@ -103,7 +103,7 @@ class Trainer:
         n_steps = n_steps + self.current_step
 
         try:
-            for i in range(self.current_step, n_steps):
+            for i in range(self.current_step, n_steps+1):
                 start = perf_counter()
                 
                 if mixed:
@@ -132,7 +132,7 @@ class Trainer:
                     steps, rewards, actor_loss, critic_loss, ep_duration, train_duration
                 )
 
-                if i > 0 and i % test_every == 0:
+                if i>0 and i % test_every == 0:
                     (
                         test_steps,
                         test_rewards,
