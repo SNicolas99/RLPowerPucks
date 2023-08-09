@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 from typing import Dict, List, Optional
+from numbers import Number
 
 import laserhockey
 
@@ -42,7 +43,7 @@ class ClientOperationState:
 
 class Client:
 
-    __VERSION__ = 'ALRL2023_1.3'
+    __VERSION__ = 'ALRL2023_1.4'
 
     def __init__(self,
                  username : str,
@@ -210,6 +211,17 @@ escape.
 
         self.network_interface.send_action(action)
 
+    @staticmethod  # This is a hack for the moment. Needs to be handled more generically
+    def validate_action(action):
+        is_valid = True
+        if not isinstance(action, list):
+            is_valid = False
+        if not len(action) == 4:
+            is_valid = False
+        if not all([isinstance(x, Number) for x in action]):
+            is_valid = False
+        return is_valid
+
     def step(self,
              ob : List[float],
              r : Optional[int] = None,
@@ -228,8 +240,10 @@ escape.
                                             trunc=trunc,
                                             info=info
                                             )
-
-            self.network_interface.send_action(action)
+            if self.validate_action(action):
+                self.network_interface.send_action(action)
+            else:
+                raise ValueError("Not valid action: " + str(action))
         except:
             # Game is None, probably due to apportion.
             # Just skipping this async call of step

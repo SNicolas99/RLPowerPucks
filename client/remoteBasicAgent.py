@@ -34,7 +34,7 @@ if __name__ == '__main__':
                     password='EeB6eo1foo',
                     controller=controller,
                     output_path='logs/basic_opponents', # rollout buffer with finished games will be saved in here
-                    interactive=True,
+                    interactive=False,
                     op='start_queuing',
                     # server_addr='localhost',
                     num_games=None)
