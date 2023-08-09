@@ -2,8 +2,9 @@ import numpy as np
 from time import perf_counter
 from .logger import Logger
 import sys
+
 sys.path.append("..")
-from algorithms.td3_code_tmp.td3_lecture.TD3 import TD3Agent
+from algorithms.TD3 import TD3Agent
 
 
 class Trainer:
@@ -21,7 +22,6 @@ class Trainer:
         render=False,
         hockey=False,
     ):
-        
         offpolicy = False
         if not isinstance(store_transitions, bool):
             agent = store_transitions
@@ -39,7 +39,11 @@ class Trainer:
             for t in range(2000):
                 if offpolicy:
                     action = player.act(state)
-                    action = np.clip(action + np.random.normal(0, noise, action.shape), env.action_space.low, env.action_space.high)
+                    action = np.clip(
+                        action + np.random.normal(0, noise, action.shape),
+                        env.action_space.low,
+                        env.action_space.high,
+                    )
                 else:
                     action = player.act(state, noise)
                 (next_state, reward, done, _trunc, _info) = env.step(action)
@@ -85,8 +89,8 @@ class Trainer:
         n_test_episodes=100,
         noise=0.2,
         player=None,
-        mixed = False,
-        add_opponent_interval = 2000,
+        mixed=False,
+        add_opponent_interval=2000,
     ):
         hockey = hasattr(env, "ishockey") and env.ishockey
         add_opponents = hasattr(env, "add_opponents") and env.add_opponents
@@ -103,17 +107,22 @@ class Trainer:
         n_steps = n_steps + self.current_step
 
         try:
-            for i in range(self.current_step, n_steps+1):
+            for i in range(self.current_step, n_steps + 1):
                 start = perf_counter()
-                
+
                 if mixed:
-                    if i%2 == 0:
+                    if i % 2 == 0:
                         player = player_og
                     else:
                         player = agent
 
                 steps, rewards, observations, actions, results = self.run(
-                    env, player, n_episodes=ep_per_step, noise=noise, store_transitions=agent, hockey=hockey
+                    env,
+                    player,
+                    n_episodes=ep_per_step,
+                    noise=noise,
+                    store_transitions=agent,
+                    hockey=hockey,
                 )
                 ep_duration = (perf_counter() - start) / ep_per_step
 
@@ -132,7 +141,7 @@ class Trainer:
                     steps, rewards, actor_loss, critic_loss, ep_duration, train_duration
                 )
 
-                if i>0 and i % test_every == 0:
+                if i > 0 and i % test_every == 0:
                     (
                         test_steps,
                         test_rewards,
