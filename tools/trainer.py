@@ -21,6 +21,7 @@ class Trainer:
         store_transitions=True,
         render=False,
         hockey=False,
+        max_steps=400,
     ):
         offpolicy = False
         if not isinstance(store_transitions, bool):
@@ -36,7 +37,7 @@ class Trainer:
         for ep in range(1, n_episodes + 1):
             ep_reward = 0
             state, _info = env.reset()
-            for t in range(2000):
+            for t in range(max_steps):
                 if offpolicy:
                     action = player.act(state)
                     action = np.clip(
@@ -91,23 +92,28 @@ class Trainer:
         player=None,
         mixed=False,
         add_opponent_interval=2000,
+        max_steps=400,
     ):
         hockey = hasattr(env, "ishockey") and env.ishockey
-        add_opponents = hasattr(env, "add_opponents") and env.add_opponents
+        add_opponents = hasattr(env, "add_opponents") and env.add_opponents and hockey
 
         if player is None:
             player = agent
         player_og = player
 
         n_steps = n_episodes // train_every
+        n_steps = n_steps + self.current_step
+
         ep_per_step = train_every
+
         if self.logger is None:
             self.logger = Logger(n_steps=n_steps, print_every=test_every)
-
-        n_steps = n_steps + self.current_step
+        else:
+            self.logger.n_steps = n_steps
 
         try:
             for i in range(self.current_step, n_steps + 1):
+                self.current_step = i
                 start = perf_counter()
 
                 if mixed:
@@ -123,6 +129,7 @@ class Trainer:
                     noise=noise,
                     store_transitions=agent,
                     hockey=hockey,
+                    max_steps=max_steps,
                 )
                 ep_duration = (perf_counter() - start) / ep_per_step
 
@@ -171,7 +178,6 @@ class Trainer:
                     opp_agent.restore_state(agent_state)
                     env.add_opponent(opp_agent)
                     print("Added opponent")
-                    self.current_step = i + 1
 
         except KeyboardInterrupt:
             print("Interrupted")
