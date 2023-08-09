@@ -148,9 +148,10 @@ class Trainer:
                         hockey=hockey,
                     )
                     self.logger.log_test(test_rewards)
-                    winrate = np.mean(test_results == 1)
-                    drawrate = np.mean(test_results == 0)
-                    self.logger.log_hockey(winrate, drawrate)
+                    if hockey:
+                        winrate = np.mean(test_results == 1)
+                        drawrate = np.mean(test_results == 0)
+                        self.logger.log_hockey(winrate, drawrate)
                     self.logger.print(i)
                 if i > 0 and add_opponents and i % add_opponent_interval == 0:
                     opp_agent = TD3Agent(

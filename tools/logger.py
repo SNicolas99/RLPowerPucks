@@ -81,9 +81,10 @@ class Logger:
             winrate = np.array(self.winrate)
             drawrate = np.array(self.drawrate)
             lossrate = np.array(self.lossrate)
+            hockey_episodes = np.arange(winrate.size) * self.test_interval
 
         test_episodes = np.arange(test_rewards.size) * self.test_interval
-        hockey_episodes = np.arange(winrate.size) * self.test_interval
+        
 
         if test_rewards.size == 0:
             print('No test rewards to plot')
