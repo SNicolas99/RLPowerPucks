@@ -4,7 +4,7 @@ from twisted.spread import pb
 from twisted.internet import reactor, defer
 from twisted.cred import credentials, error as cred_error
 
-from common_old.error import *
+from common.error import *
 
 class NotConnectedError(Exception):
     pass
@@ -52,7 +52,6 @@ class NetworkInterface(pb.Referenceable):
         d.addErrback(self.server_client_version_missmatch_error)
         d.addErrback(self.authentification_error)
         d.addErrback(self.connection_error, conn_err=NetworkInterfaceConnectionError.CONNECTING)
-        print("connected")
         reactor.run()
 
     def disconnect(self) -> None:
@@ -130,7 +129,6 @@ class NetworkInterface(pb.Referenceable):
                          info : Dict,
                          result : Dict
                         ) -> None:
-        print(type(r), r)
         self.client.game_done(ob, r, done, trunc, info, result)
 
     def remote_receive_observation(self,

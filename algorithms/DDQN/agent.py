@@ -1,4 +1,5 @@
 import copy
+from functools import reduce
 
 import numpy as np
 import torch as T
@@ -97,6 +98,7 @@ class DQNAgent():
         reward = np.stack(data[:,2])[:,None] # rew  (batchsize,1)
         s_prime = np.stack(data[:,3]) # s_t+1
         done = np.stack(data[:,4])[:,None] # done signal  (batchsize,1)
+
 
         if self.config["use_target_net"]:
             v_prime = self.Q_target.maxQ(s_prime)[:, None]

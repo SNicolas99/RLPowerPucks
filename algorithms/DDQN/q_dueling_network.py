@@ -102,8 +102,8 @@ class QFunction(DuelingDeepQNetwork):
         return mean_wl.item()
 
     def Q_value(self, observations, actions):
-        return T.gather(self.forward(T.from_numpy(observations).to(self.device).float()), 1,
-                        T.from_numpy(actions[:, None]).to(self.device).long())
+        # compute the Q value for the give actions
+        return T.gather(self.forward(T.from_numpy(observations).to(self.device).float()), 1, T.from_numpy(actions[:, None]).to(self.device).long())
 
     def maxQ(self, observations):
         # compute the maximal Q-value

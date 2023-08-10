@@ -9,7 +9,7 @@ from twisted.internet import reactor, task
 
 from .network_interface import NetworkInterface, NetworkInterfaceConnectionError
 from .game import Game
-from client_old.remoteControllerInterface import RemoteControllerInterface
+from client.remoteControllerInterface import RemoteControllerInterface
 
 
 def parseOptions():
@@ -43,7 +43,7 @@ class ClientOperationState:
 
 class Client:
 
-    __VERSION__ = 'ALRL2023_1.4'
+    __VERSION__ = 'ALRL2023_1.5'
 
     def __init__(self,
                  username : str,
@@ -224,15 +224,15 @@ escape.
 
     def step(self,
              ob : List[float],
-             r : Optional[int] = None,
+             r : Optional[float] = None,
              done : Optional[int] = None,
              trunc : Optional[int] = None,
              info : Optional[Dict] = None
             ) -> None:
 
-
         action = self.controller.remote_act(np.asarray(ob)).tolist()
-
+        if self.verbose and done:
+            print(f"Winner: {info['winner']}")
         try:
             self.current_game.add_transition(next_obs=ob,
                                             next_action=action,
@@ -246,7 +246,7 @@ escape.
             else:
                 raise ValueError("Not valid action: " + str(action))
         except:
-            # Game is None, probably due to apportion.
+            # Game is None, probably due to abortion.
             # Just skipping this async call of step
             pass
 
@@ -267,16 +267,16 @@ escape.
 
     def game_done(self,
                   ob : List[float],
-                  r : int,
+                  r : float,
                   done : int,
                   trunc : int,
                   info : Dict,
-                  result : str
+                  result : Dict
                  ) -> None:
 
         if self.verbose:
-            print(f'{result["games_played"]} games played. You won {result["games_won"]} games. You lost {result["games_lost"]} games. {result["games_drawn"]} game(s) end in a draw.')
-
+                print(f"Winner: {info['winner']}")
+                print(f'{result["games_played"]} games played. You won {result["games_won"]} games. You lost {result["games_lost"]} games. {result["games_drawn"]} game(s) end in a draw.')
         self.current_game.add_transition(next_obs=ob,
                                          next_action=None,
                                          r=r,

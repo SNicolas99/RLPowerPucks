@@ -64,7 +64,9 @@ class Logger:
 
             # TODO: See if this works properly
             file = open(os.path.join(self.log_directory, "hyperparams.txt"), "a")
-            file.write("#### Win_Percentage_List ####\n")
+            file.write("\n##############################\n")
+            file.write("WIN PERCENTAGES\n")
+            file.write("##############################\n")
             file.write(str(win_percentages))
             file.close()
 
@@ -155,7 +157,7 @@ class Logger:
         file.write("\nWin/Lose Rate: " + str(round(win_count / lose_count, 3)))
         file.write("\nWin/Lose/Undecided: " + str(win_count) + "/" + str(lose_count) + "/" + str(
             max_episodes - win_count - lose_count))
-        file.write("\n###########################")
+        file.write("\n###########################\n")
         file.close()
 
     def print_time_info(self, episode_count, max_episodes, start_time):
@@ -181,7 +183,7 @@ class Logger:
                                  training_mode, learning_rate, buffer_size, exp_rep_frq, use_target_net, use_per, use_existing_weights, weight_path):
 
         file = open(os.path.join(self.log_directory, "hyperparams.txt"), "w")
-        file.write("###########################")
+        file.write("\n###########################")
         file.write("\nHYPERPARAMETERS")
         file.write("\n###########################")
         file.write("\ne: " + e)
@@ -201,5 +203,31 @@ class Logger:
         file.write("\nuse_existing_weights: " + use_existing_weights)
         if use_existing_weights:
             file.write("\nweight_path: " + weight_path)
-        file.write("\n###########################")
+        file.write("\n###########################\n")
         file.close()
+
+
+    def store_all_eval_results(self, eval_results):
+        file = open(os.path.join(self.log_directory, "hyperparams.txt"), "a")
+        file.write("\n###########################")
+        file.write("\nEVALUATION RESULTS")
+        file.write("\n###########################\n")
+        file.write(str(eval_results))
+        file.write("###########################\n")
+        file.close()
+
+    def plot_eval_results(self, eval_results):
+
+
+        x = [i * 1000 for i in range(1, len(eval_results) + 1)]
+        x.insert(0,0)
+        eval_results.insert(0,0)
+
+        plt.plot(x, eval_results)
+        plt.xlabel("Episodes")
+        plt.ylabel("Win/Lose Percentage")
+        plt.title("Evaluation: Wins compared to losses")
+        plt.grid(True)
+        plt.savefig(os.path.join(self.log_directory, 'final_evaluation.png'))
+        plt.show()
+
