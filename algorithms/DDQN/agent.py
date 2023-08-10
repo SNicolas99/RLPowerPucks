@@ -3,8 +3,8 @@ from functools import reduce
 
 import numpy as np
 import torch as T
-from algorithms.DDQN.memory import Memory, PER_Memory
-from algorithms.DDQN.q_dueling_network import QFunction
+from memory import Memory, PER_Memory
+from q_dueling_network import QFunction
 import os
 import time
 

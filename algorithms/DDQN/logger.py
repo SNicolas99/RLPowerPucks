@@ -222,6 +222,7 @@ class Logger:
         x = [i * 1000 for i in range(1, len(eval_results) + 1)]
         x.insert(0,0)
         eval_results.insert(0,0)
+        print("eval_results: " + str(eval_results))
 
         plt.plot(x, eval_results)
         plt.xlabel("Episodes")
