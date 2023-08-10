@@ -193,6 +193,7 @@ class Logger:
         self.ep_durations = state["ep_durations"]
         self.train_durations = state["train_durations"]
         self.test_rewards = state["test_rewards"]
-        self.winrate = state["winrate"]
-        self.drawrate = state["drawrate"]
-        self.lossrate = state["lossrate"]
+        if self.hockey:
+            self.winrate = state["winrate"]
+            self.drawrate = state["drawrate"]
+            self.lossrate = state["lossrate"]
