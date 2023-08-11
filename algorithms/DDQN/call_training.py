@@ -16,7 +16,7 @@ arg_parser.add_argument('--weak_opponent', type=bool, default=False)
 
 arg_parser.add_argument('--play_own_agent', action='store_true')
 
-arg_parser.add_argument('--batch_size', type=int, default=30)
+arg_parser.add_argument('--batch_size', type=int, default=20)
 arg_parser.add_argument('--discount', type=float, default=0.98)
 arg_parser.add_argument('--gradient_update_frequency', type=int, default= 1100)
 arg_parser.add_argument('--step_max', type=int, default=300)
@@ -30,7 +30,7 @@ arg_parser.add_argument('--save_weights', type=bool, default=False)
 arg_parser.add_argument('--use_existing_weights', type=bool, default=False)
 
 arg_parser.add_argument('--buffer_size', type=int, default=1000000)
-arg_parser.add_argument('--experience_replay_frequency', type=int, default=4)
+arg_parser.add_argument('--experience_replay_frequency', type=int, default=10)
 arg_parser.add_argument('--use_target_net', default=True)
 # Arguments for Prioritized Experience Replay
 arg_parser.add_argument('--PER', default=False)
