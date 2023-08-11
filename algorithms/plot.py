@@ -37,6 +37,7 @@ def plot_hockey(
     plt.yscale(yscale)
     plt.title(title)
     plt.legend()
+    plt.grid()
     plt.savefig(save_path)
 
 

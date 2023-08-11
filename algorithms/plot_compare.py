@@ -55,6 +55,7 @@ def plot_compare(
     plt.yscale(yscale)
     plt.title(title)
     plt.legend(labels)
+    plt.grid()
     plt.savefig(save_path)
 
 
